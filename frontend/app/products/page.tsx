@@ -21,7 +21,7 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("http://localhost:5000/products");
+        const res = await fetch("http://afrilinkcapital.onrender.com/products");
         const data = await res.json();
 
         setProducts(data.products || []);

@@ -12,7 +12,7 @@ export default function RegisterPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("http://localhost:5000/register", {
+    const res = await fetch("http://afrilinkcapital.onrender.com/register", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

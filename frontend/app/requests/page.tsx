@@ -32,7 +32,7 @@ export default function RequestsPage() {
 
     async function fetchRequests() {
       try {
-        const res = await fetch("http://localhost:5000/requests");
+        const res = await fetch("http://afrilinkcapital.onrender.com/requests");
         const data = await res.json();
 
         console.log("REQUESTS DATA:", data);

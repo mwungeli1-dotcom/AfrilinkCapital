@@ -10,7 +10,7 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("http://localhost:5000/login", {
+    const res = await fetch("http://afrilinkcapital.onrender.com/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

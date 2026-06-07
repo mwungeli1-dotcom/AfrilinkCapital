@@ -16,7 +16,7 @@ export default async function ProductDetailsPage({
 }) {
   const { id } = await params;
 
-  const res = await fetch(`http://localhost:5000/products/${id}`, {
+  const res = await fetch(`http://afrilinkcapital.onrender.com/products/${id}`, {
     cache: "no-store",
   });
 

@@ -14,7 +14,7 @@ export default function QuotePage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("http://localhost:5000/quotations", {
+    const res = await fetch("http://afrilinkcapital.onrender.com/quotations", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

@@ -24,7 +24,7 @@ export default function EditProductPage() {
 
     async function fetchProduct() {
       try {
-        const res = await fetch(`http://localhost:5000/products/${id}`);
+        const res = await fetch(`http://afrilinkcapital.onrender.com/products/${id}`);
         const data = await res.json();
 
         const product = data.product || data;
@@ -53,7 +53,7 @@ export default function EditProductPage() {
       return;
     }
 
-    const res = await fetch(`http://localhost:5000/products/${id}`, {
+    const res = await fetch(`http://afrilinkcapital.onrender.com/products/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

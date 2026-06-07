@@ -34,7 +34,7 @@ export default function EditRequestPage() {
 
     async function fetchRequest() {
       try {
-        const res = await fetch(`http://localhost:5000/requests/${id}`);
+        const res = await fetch(`http://afrilinkcapital.onrender.com/requests/${id}`);
         const data = await res.json();
 
         const request = data.request || data;
@@ -61,7 +61,7 @@ export default function EditRequestPage() {
       return;
     }
 
-    const res = await fetch(`http://localhost:5000/requests/${id}`, {
+    const res = await fetch(`http://afrilinkcapital.onrender.com/requests/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
