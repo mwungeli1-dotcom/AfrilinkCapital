@@ -12,24 +12,37 @@ export default function RegisterPage() {
   async function handleRegister(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("http://afrilinkcapital.onrender.com/register", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ name, email, password, role }),
-    });
+    try {
+      const res = await fetch(
+        "https://afrilinkcapital.onrender.com/register",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            password,
+            role,
+          }),
+        }
+      );
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (data.success) {
-      toast.success("Account created successfully!");
+      if (data.success) {
+        toast.success("Account created successfully!");
 
-      setTimeout(() => {
-        window.location.href = "/login";
-      }, 1000);
-    } else {
-      toast.error(data.message || "Registration failed");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 1000);
+      } else {
+        toast.error(data.message || "Registration failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Cannot connect to server");
     }
   }
 
@@ -46,6 +59,7 @@ export default function RegisterPage() {
             placeholder="Full Name"
             value={name}
             onChange={(e) => setName(e.target.value)}
+            required
           />
 
           <input
@@ -54,6 +68,7 @@ export default function RegisterPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           <input
@@ -62,6 +77,7 @@ export default function RegisterPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
 
           <select
@@ -74,7 +90,10 @@ export default function RegisterPage() {
             <option value="admin">Admin</option>
           </select>
 
-          <button className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition">
+          <button
+            type="submit"
+            className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition"
+          >
             Register
           </button>
         </form>
