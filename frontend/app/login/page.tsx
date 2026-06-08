@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/src/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -10,15 +10,10 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("https://afrilinkcapital.onrender.com/login", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
-
-    const data = await res.json();
+    const data = await apiFetch("/login", {
+  method: "POST",
+  body: JSON.stringify({ email, password }),
+});
 
     if (data.success) {
       toast.success("Login successful!");
