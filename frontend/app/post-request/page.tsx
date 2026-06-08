@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/src/lib/api";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
@@ -30,52 +30,48 @@ export default function PostRequestPage() {
   }, []);
 
   const handleSubmit = async () => {
-    if (!title || !description || !quantity || !country) {
-      toast.error("Please fill in all fields");
+  if (!title || !description || !quantity || !country) {
+    toast.error("Please fill in all fields");
+    return;
+  }
+
+  const newRequest = {
+    title,
+    description,
+    quantity,
+    country,
+  };
+
+  try {
+    const data = await apiFetch("/requests", {
+      method: "POST",
+      body: JSON.stringify(newRequest),
+    });
+
+    console.log(data);
+
+    if (!data.success) {
+      toast.error(data.message || "Failed to submit request");
       return;
     }
 
-    const newRequest = {
-      title,
-      description,
-      quantity,
-      country,
-    };
+    setRequests([...requests, newRequest]);
 
-    try {
-      const response = await fetch("https://afrilinkcapital.onrender.com/requests", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newRequest),
-      });
+    toast.success("Request submitted successfully!");
 
-      if (!response.ok) {
-        throw new Error("Failed to submit request");
-      }
+    setTitle("");
+    setDescription("");
+    setQuantity("");
+    setCountry("");
 
-      const data = await response.json();
-      console.log(data);
-
-      setRequests([...requests, newRequest]);
-
-      toast.success("Request submitted successfully!");
-
-      setTitle("");
-      setDescription("");
-      setQuantity("");
-      setCountry("");
-
-      setTimeout(() => {
-        window.location.href = "/requests";
-      }, 1000);
-    } catch (error) {
-      console.error(error);
-      toast.error("Something went wrong. Please try again.");
-    }
-  };
-
+    setTimeout(() => {
+      window.location.href = "/requests";
+    }, 1000);
+  } catch (error) {
+    console.error(error);
+    toast.error("Something went wrong. Please try again.");
+  }
+};
   return (
     <main className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8">
