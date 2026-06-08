@@ -10,7 +10,7 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    const res = await fetch("http://afrilinkcapital.onrender.com/login", {
+    const res = await fetch("https://afrilinkcapital.onrender.com/login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -59,9 +59,12 @@ export default function LoginPage() {
             onChange={(e) => setPassword(e.target.value)}
           />
 
-          <button className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition">
-            Login
-          </button>
+          <button
+  type="submit"
+  className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition"
+>
+  Login
+</button>
 
         </form>
       </div>
