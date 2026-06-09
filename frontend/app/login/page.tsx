@@ -1,4 +1,5 @@
 "use client";
+
 import { apiFetch } from "@/src/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
@@ -10,22 +11,34 @@ export default function LoginPage() {
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
 
-    const data = await apiFetch("/login", {
-  method: "POST",
-  body: JSON.stringify({ email, password }),
-});
+    try {
+      const data = await apiFetch("/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
 
-    if (data.success) {
-      toast.success("Login successful!");
+      if (data.success) {
+        toast.success("Login successful!");
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
 
-      setTimeout(() => {
-        window.location.href = "/";
-      }, 1000);
-    } else {
-      toast.error(data.message || "Login failed");
+        setTimeout(() => {
+          if (data.user.role === "admin") {
+            window.location.href = "/admin";
+          } else {
+            window.location.href = "/dashboard";
+          }
+        }, 1000);
+      } else {
+        toast.error(data.message || "Login failed");
+      }
+    } catch (error) {
+      console.error(error);
+      toast.error("Cannot connect to server");
     }
   }
 
@@ -44,6 +57,7 @@ export default function LoginPage() {
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
+            required
           />
 
           <input
@@ -52,14 +66,15 @@ export default function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            required
           />
 
           <button
-  type="submit"
-  className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition"
->
-  Login
-</button>
+            type="submit"
+            className="w-full bg-blue-950 text-white p-3 rounded-lg hover:bg-yellow-400 hover:text-black transition"
+          >
+            Login
+          </button>
 
         </form>
       </div>
