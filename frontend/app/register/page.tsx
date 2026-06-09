@@ -1,5 +1,6 @@
 "use client";
 
+import { apiFetch } from "@/src/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
 
@@ -13,23 +14,15 @@ export default function RegisterPage() {
     e.preventDefault();
 
     try {
-      const res = await fetch(
-        "https://afrilinkcapital.onrender.com/register",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            email,
-            password,
-            role,
-          }),
-        }
-      );
-
-      const data = await res.json();
+      const data = await apiFetch("/register", {
+        method: "POST",
+        body: JSON.stringify({
+          name,
+          email,
+          password,
+          role,
+        }),
+      });
 
       if (data.success) {
         toast.success("Account created successfully!");
@@ -87,7 +80,6 @@ export default function RegisterPage() {
           >
             <option value="buyer">Buyer</option>
             <option value="supplier">Supplier</option>
-            <option value="admin">Admin</option>
           </select>
 
           <button
