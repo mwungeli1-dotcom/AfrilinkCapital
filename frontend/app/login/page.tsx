@@ -28,11 +28,10 @@ export default function LoginPage() {
 
         setTimeout(() => {
           if (data.user.role === "admin") {
-            if (data.user.role === "admin") {
-  window.location.href = "/dashboard";
-} else {
-  window.location.href = "/";
-}
+            window.location.href = "/dashboard";
+          } else {
+            window.location.href = "/";
+          }
         }, 1000);
       } else {
         toast.error(data.message || "Login failed");
@@ -51,7 +50,6 @@ export default function LoginPage() {
         </h1>
 
         <form onSubmit={handleLogin} className="space-y-4">
-
           <input
             className="w-full border p-3 rounded-lg"
             placeholder="Email Address"
@@ -76,7 +74,6 @@ export default function LoginPage() {
           >
             Login
           </button>
-
         </form>
       </div>
     </main>
