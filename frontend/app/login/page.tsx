@@ -28,10 +28,11 @@ export default function LoginPage() {
 
         setTimeout(() => {
           if (data.user.role === "admin") {
-            window.location.href = "/admin";
-          } else {
-            window.location.href = "/dashboard";
-          }
+            if (data.user.role === "admin") {
+  window.location.href = "/dashboard";
+} else {
+  window.location.href = "/";
+}
         }, 1000);
       } else {
         toast.error(data.message || "Login failed");
