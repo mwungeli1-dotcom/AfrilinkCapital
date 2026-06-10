@@ -206,6 +206,7 @@ app.put("/products/:id", async (req, res) => {
         origin: req.body.origin,
         description: req.body.description,
         image: req.body.image,
+        image: req.body.image,
       },
       { new: true, runValidators: true }
     );
