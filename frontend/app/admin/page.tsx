@@ -18,8 +18,7 @@ export default function AdminPage() {
 
       <div className="grid gap-4">
         <a
-          hr
-          ef="/admin/products"
+          href="/admin/products"
           className="bg-black text-white p-4 rounded-lg text-center"
         >
           Manage Products
