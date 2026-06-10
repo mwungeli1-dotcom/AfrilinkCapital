@@ -1,6 +1,6 @@
 "use client";
 
-import { apiFetch } from "@/src/lib/api";
+import { apiFetch } from "../../src/lib/api";
 import { useState } from "react";
 import toast from "react-hot-toast";
 

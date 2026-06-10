@@ -28,7 +28,7 @@ export default function Home() {
 
     async function fetchProducts() {
       try {
-        const res = await fetch("http://afrilinkcapital.onrender.com/products");
+        const res = await fetch("https://afrilinkcapital.onrender.com/products");
         const data = await res.json();
 
         setProducts((data.products || []).slice(0, 4));
@@ -64,6 +64,10 @@ export default function Home() {
             Request Quotation
           </Link>
 
+          <Link href="/contact" className="hover:text-yellow-400">
+            Contact
+          </Link>
+
           {isLoggedIn ? (
             <>
               <Link href="/dashboard" className="hover:text-yellow-400">
@@ -77,6 +81,7 @@ export default function Home() {
               <button
                 onClick={() => {
                   localStorage.removeItem("token");
+                  localStorage.removeItem("user");
                   window.location.reload();
                 }}
                 className="hover:text-yellow-400"
@@ -122,6 +127,13 @@ export default function Home() {
             className="bg-white text-blue-950 px-8 py-4 rounded-xl hover:bg-yellow-400 transition duration-300"
           >
             Request a Quotation
+          </Link>
+
+          <Link
+            href="/contact"
+            className="border border-white text-white px-8 py-4 rounded-xl hover:bg-white hover:text-blue-950 transition duration-300"
+          >
+            Contact Us
           </Link>
         </div>
       </section>
@@ -307,9 +319,20 @@ export default function Home() {
 
           <div>
             <h5 className="font-semibold mb-3">Quick Links</h5>
-            <p>Products</p>
-            <p>Request Quotation</p>
-            <p>Contact</p>
+
+            <div className="flex flex-col gap-2">
+              <Link href="/products" className="hover:text-yellow-400">
+                Products
+              </Link>
+
+              <Link href="/post-request" className="hover:text-yellow-400">
+                Request Quotation
+              </Link>
+
+              <Link href="/contact" className="hover:text-yellow-400">
+                Contact
+              </Link>
+            </div>
           </div>
 
           <div>
