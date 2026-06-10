@@ -1,5 +1,5 @@
 "use client";
-
+import { apiFetch } from "@/src/lib/api";
 import { useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
@@ -26,29 +26,24 @@ export default function CreateProductPage() {
     try {
       setSaving(true);
 
-      const res = await fetch("https://afrilinkcapital.onrender.com/products", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          name,
-          category,
-          price,
-          delivery,
-          origin,
-          description,
-          image,
-          video,
-        }),
-      });
+      const data = await apiFetch("/products", {
+  method: "POST",
+  body: JSON.stringify({
+    name,
+    category,
+    price,
+    delivery,
+    origin,
+    description,
+    image,
+    video,
+  }),
+});
 
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        toast.error(data.message || "Failed to create product");
-        return;
-      }
+if (data.success === false) {
+  toast.error(data.message || "Failed to create product");
+  return;
+}
 
       toast.success("Product created successfully!");
 
