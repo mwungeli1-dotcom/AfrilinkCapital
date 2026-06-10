@@ -18,13 +18,22 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
-
+  const [isAdmin, setIsAdmin] = useState(false);
   useEffect(() => {
     const token = localStorage.getItem("token");
+const savedUser = localStorage.getItem("user");
 
-    if (token) {
-      setIsLoggedIn(true);
-    }
+if (token) {
+  setIsLoggedIn(true);
+}
+
+if (savedUser) {
+  const user = JSON.parse(savedUser);
+
+  if (user.role === "admin") {
+    setIsAdmin(true);
+  }
+}
 
     async function fetchProducts() {
       try {
@@ -68,38 +77,46 @@ export default function Home() {
             Contact
           </Link>
 
-          {isLoggedIn ? (
-            <>
-              <Link href="/dashboard" className="hover:text-yellow-400">
-                Admin Dashboard
-              </Link>
+        {isLoggedIn ? (
+  <>
+    {isAdmin && (
+      <>
+        <Link href="/dashboard" className="hover:text-yellow-400">
+          Admin Dashboard
+        </Link>
 
-              <Link href="/requests" className="hover:text-yellow-400">
-                Manage Requests
-              </Link>
+        <Link href="/admin/products" className="hover:text-yellow-400">
+          Manage Products
+        </Link>
 
-              <button
-                onClick={() => {
-                  localStorage.removeItem("token");
-                  localStorage.removeItem("user");
-                  window.location.reload();
-                }}
-                className="hover:text-yellow-400"
-              >
-                Logout
-              </button>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="hover:text-yellow-400">
-                Login
-              </Link>
+        <Link href="/requests" className="hover:text-yellow-400">
+          Manage Requests
+        </Link>
+      </>
+    )}
 
-              <Link href="/register" className="hover:text-yellow-400">
-                Register
-              </Link>
-            </>
-          )}
+    <button
+      onClick={() => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        window.location.reload();
+      }}
+      className="hover:text-yellow-400"
+    >
+      Logout
+    </button>
+  </>
+) : (
+  <>
+    <Link href="/login" className="hover:text-yellow-400">
+      Login
+    </Link>
+
+    <Link href="/register" className="hover:text-yellow-400">
+      Register
+    </Link>
+  </>
+)}
         </div>
       </nav>
 
