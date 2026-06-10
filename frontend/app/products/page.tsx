@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { apiFetch } from "@/src/lib/api";
 
 type Product = {
   _id: string;
@@ -21,13 +22,11 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
-        const res = await fetch("http://afrilinkcapital.onrender.com/products");
-        const data = await res.json();
-
+        const data = await apiFetch("/products");
         setProducts(data.products || []);
-        setLoading(false);
       } catch (error) {
         console.error(error);
+      } finally {
         setLoading(false);
       }
     }
@@ -79,13 +78,19 @@ export default function ProductsPage() {
               {product.category}
             </p>
 
-            <h2 className="text-lg font-bold mt-2 mb-2">{product.name}</h2>
+            <h2 className="text-lg font-bold mt-2 mb-2">
+              {product.name}
+            </h2>
 
             <p className="text-gray-700">{product.price}</p>
+
             <p className="text-gray-500 text-sm">
               Delivery: {product.delivery}
             </p>
-            <p className="text-gray-500 text-sm">Origin: {product.origin}</p>
+
+            <p className="text-gray-500 text-sm">
+              Origin: {product.origin}
+            </p>
 
             <p className="text-xs text-gray-500 mt-3">
               Afrilink Capital manages sourcing, negotiation, importation and
@@ -94,7 +99,7 @@ export default function ProductsPage() {
 
             <Link
               href={`/products/${product._id}`}
-              className="block text-center mt-4 bg-blue-900 text-white py-2 rounded"
+              className="block text-center mt-4 bg-blue-900 text-white py-2 rounded hover:bg-yellow-400 hover:text-black transition"
             >
               View Product
             </Link>
