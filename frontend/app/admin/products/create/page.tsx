@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import toast from "react-hot-toast";
 
 export default function CreateProductPage() {
@@ -12,6 +13,7 @@ export default function CreateProductPage() {
   const [description, setDescription] = useState("");
   const [image, setImage] = useState("");
   const [video, setVideo] = useState("");
+  const [saving, setSaving] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -22,7 +24,9 @@ export default function CreateProductPage() {
     }
 
     try {
-      const res = await fetch("http://afrilinkcapital.onrender.com/products", {
+      setSaving(true);
+
+      const res = await fetch("https://afrilinkcapital.onrender.com/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -56,15 +60,27 @@ export default function CreateProductPage() {
       setDescription("");
       setImage("");
       setVideo("");
+
+      setTimeout(() => {
+        window.location.href = "/admin/products";
+      }, 800);
     } catch (error) {
       console.error(error);
       toast.error("Something went wrong");
+    } finally {
+      setSaving(false);
     }
   }
 
   return (
     <main className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-3xl mx-auto bg-white rounded-2xl shadow-xl p-8">
+        <div className="mb-6">
+          <Link href="/admin/products" className="text-blue-900 font-semibold">
+            ← Back to Products
+          </Link>
+        </div>
+
         <h1 className="text-4xl font-bold text-blue-900 mb-2">
           Add New Product
         </h1>
@@ -155,9 +171,10 @@ export default function CreateProductPage() {
 
           <button
             type="submit"
-            className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-xl"
+            disabled={saving}
+            className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
           >
-            Save Product
+            {saving ? "Saving Product..." : "Save Product"}
           </button>
         </form>
       </div>
