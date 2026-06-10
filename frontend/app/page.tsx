@@ -43,7 +43,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-blue-950 text-white">
       <nav className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-4 p-6 border-b border-blue-800 bg-blue-950">
-        <h1 className="text-2xl font-bold text-yellow-400">Afrilink Hub</h1>
+        <h1 className="text-2xl font-bold text-yellow-400">Afrilink Capital</h1>
 
         <div className="md:hidden">
           <button onClick={() => setMenuOpen(!menuOpen)} className="text-3xl">
