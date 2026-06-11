@@ -184,7 +184,7 @@ if (savedUser) {
                     <img
                       src={product.image}
                       alt={product.name}
-                      className="w-full h-full object-cover"
+                    className="w-full h-full object-contain bg-gray-100"
                     />
                   ) : (
                     <span className="text-gray-500">Product Image</span>
