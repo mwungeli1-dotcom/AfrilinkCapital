@@ -346,6 +346,17 @@ export default function Home() {
             <p className="mt-3 text-gray-300">
               Your import partner for Africa.
             </p>
+            <p>
+  Facebook:
+  <a
+    href="https://www.facebook.com/afrilinkcapital"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-yellow-400 ml-2"
+  >
+    Afrilink Capital
+  </a>
+</p>
           </div>
 
           <div>
