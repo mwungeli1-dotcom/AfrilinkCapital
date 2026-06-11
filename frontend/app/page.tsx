@@ -1,4 +1,5 @@
 "use client";
+
 import WhatsAppButton from "@/components/WhatsAppButton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -17,23 +18,23 @@ type Product = {
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [products, setProducts] = useState<Product[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+
   useEffect(() => {
     const token = localStorage.getItem("token");
-const savedUser = localStorage.getItem("user");
+    const savedUser = localStorage.getItem("user");
 
-if (token) {
-  setIsLoggedIn(true);
-}
+    setIsLoggedIn(!!token);
 
-if (savedUser) {
-  const user = JSON.parse(savedUser);
-
-  if (user.role === "admin") {
-    setIsAdmin(true);
-  }
-}
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setIsAdmin(user?.role === "admin");
+      } catch {
+        setIsAdmin(false);
+      }
+    }
 
     async function fetchProducts() {
       try {
@@ -42,23 +43,32 @@ if (savedUser) {
 
         setProducts((data.products || []).slice(0, 4));
       } catch (error) {
-        console.error(error);
+        console.error("Failed to fetch products:", error);
       }
     }
 
     fetchProducts();
   }, []);
 
+  function logout() {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    window.location.reload();
+  }
+
   return (
     <main className="min-h-screen bg-blue-950 text-white">
       <nav className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-4 p-6 border-b border-blue-800 bg-blue-950">
-        <h1 className="text-2xl font-bold text-yellow-400">Afrilink Capital</h1>
+        <h1 className="text-2xl font-bold text-yellow-400">
+          Afrilink Capital
+        </h1>
 
-        <div className="md:hidden">
-          <button onClick={() => setMenuOpen(!menuOpen)} className="text-3xl">
-            ☰
-          </button>
-        </div>
+        <button
+          onClick={() => setMenuOpen(!menuOpen)}
+          className="md:hidden text-3xl"
+        >
+          ☰
+        </button>
 
         <div
           className={`${
@@ -77,46 +87,39 @@ if (savedUser) {
             Contact
           </Link>
 
-        {isLoggedIn ? (
-  <>
-    {isAdmin && (
-      <>
-        <Link href="/dashboard" className="hover:text-yellow-400">
-          Admin Dashboard
-        </Link>
+          {isLoggedIn ? (
+            <>
+              {isAdmin && (
+                <>
+                  <Link href="/dashboard" className="hover:text-yellow-400">
+                    Admin Dashboard
+                  </Link>
 
-        <Link href="/admin/products" className="hover:text-yellow-400">
-          Manage Products
-        </Link>
+                  <Link href="/admin/products" className="hover:text-yellow-400">
+                    Manage Products
+                  </Link>
 
-        <Link href="/requests" className="hover:text-yellow-400">
-          Manage Requests
-        </Link>
-      </>
-    )}
+                  <Link href="/requests" className="hover:text-yellow-400">
+                    Manage Requests
+                  </Link>
+                </>
+              )}
 
-    <button
-      onClick={() => {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        window.location.reload();
-      }}
-      className="hover:text-yellow-400"
-    >
-      Logout
-    </button>
-  </>
-) : (
-  <>
-    <Link href="/login" className="hover:text-yellow-400">
-      Login
-    </Link>
+              <button onClick={logout} className="hover:text-yellow-400">
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link href="/login" className="hover:text-yellow-400">
+                Login
+              </Link>
 
-    <Link href="/register" className="hover:text-yellow-400">
-      Register
-    </Link>
-  </>
-)}
+              <Link href="/register" className="hover:text-yellow-400">
+                Register
+              </Link>
+            </>
+          )}
         </div>
       </nav>
 
@@ -177,43 +180,60 @@ if (savedUser) {
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-            {products.map((product) => (
-              <div
-  key={product._id}
-  className="bg-white rounded-lg shadow p-5 transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
->
+            {products.map((product) => {
+              const imageUrl = product.image?.trim();
 
-                <p className="text-sm text-blue-700 font-semibold">
-                  {product.category}
-                </p>
-
-                <h3 className="text-lg font-bold mt-2 mb-2">
-                  {product.name}
-                </h3>
-
-                <p className="text-gray-700">{product.price}</p>
-
-                <p className="text-gray-500 text-sm">
-                  Delivery: {product.delivery}
-                </p>
-
-                <p className="text-gray-500 text-sm">
-                  Origin: {product.origin}
-                </p>
-
-                <p className="text-xs text-gray-500 mt-3">
-                  Afrilink Capital manages sourcing, negotiation, importation
-                  and delivery.
-                </p>
-
-                <Link
-                  href={`/products/${product._id}`}
-                  className="block text-center mt-4 w-full bg-blue-900 text-white py-2 rounded"
+              return (
+                <div
+                  key={product._id}
+                  className="bg-white rounded-xl shadow p-4 transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
                 >
-                  View Product
-                </Link>
-              </div>
-            ))}
+                  <div className="h-40 mb-4 flex items-center justify-center overflow-hidden bg-gray-50 rounded-lg border">
+                    {imageUrl ? (
+                      <img
+                        src={imageUrl}
+                        alt={product.name}
+                        className="w-full h-full object-contain transition duration-300 hover:scale-105"
+                      />
+                    ) : (
+                      <span className="text-gray-400 text-sm">No Image</span>
+                    )}
+                  </div>
+
+                  <p className="text-sm text-blue-700 font-semibold">
+                    {product.category}
+                  </p>
+
+                  <h3 className="text-lg font-bold mt-2 mb-2 line-clamp-2">
+                    {product.name}
+                  </h3>
+
+                  <p className="text-gray-700 font-semibold">
+                    {product.price}
+                  </p>
+
+                  <p className="text-gray-500 text-sm">
+                    Delivery: {product.delivery}
+                  </p>
+
+                  <p className="text-gray-500 text-sm">
+                    Origin: {product.origin}
+                  </p>
+
+                  <p className="text-xs text-gray-500 mt-3">
+                    Afrilink Capital manages sourcing, negotiation, importation
+                    and delivery.
+                  </p>
+
+                  <Link
+                    href={`/products/${product._id}`}
+                    className="block text-center mt-4 w-full bg-blue-900 text-white py-2 rounded hover:bg-yellow-400 hover:text-black transition"
+                  >
+                    View Product
+                  </Link>
+                </div>
+              );
+            })}
           </div>
         )}
       </section>
@@ -314,6 +334,8 @@ if (savedUser) {
           </div>
         </div>
       </section>
+
+      <WhatsAppButton />
 
       <footer className="bg-blue-950 text-white px-6 py-10 border-t border-blue-800">
         <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-6">
