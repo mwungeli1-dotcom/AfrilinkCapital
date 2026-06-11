@@ -59,9 +59,20 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-blue-950 text-white">
       <nav className="sticky top-0 z-50 flex flex-col md:flex-row items-center justify-between gap-4 p-6 border-b border-blue-800 bg-blue-950">
-        <h1 className="text-2xl font-bold text-yellow-400">
-          Afrilink Capital
-        </h1>
+        <div className="flex items-center gap-6">
+  <Link
+    href="/"
+    className="text-white hover:text-yellow-400 font-semibold"
+  >
+    HOME
+  </Link>
+
+  <Link href="/">
+    <h1 className="text-2xl font-bold text-yellow-400 hover:text-white transition">
+      Afrilink Capital
+    </h1>
+  </Link>
+</div>
 
         <button
           onClick={() => setMenuOpen(!menuOpen)}
