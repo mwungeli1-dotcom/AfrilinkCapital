@@ -178,18 +178,10 @@ if (savedUser) {
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
             {products.map((product) => (
-              <div key={product._id} className="bg-white rounded-lg shadow p-5">
-                <div className="h-32 bg-gray-200 rounded mb-4 flex items-center justify-center overflow-hidden">
-                  {product.image ? (
-                    <img
-                      src={product.image}
-                      alt={product.name}
-                    className="w-full h-full object-contain bg-gray-100"
-                    />
-                  ) : (
-                    <span className="text-gray-500">Product Image</span>
-                  )}
-                </div>
+              <div
+  key={product._id}
+  className="bg-white rounded-lg shadow p-5 transition duration-300 hover:-translate-y-2 hover:shadow-2xl"
+>
 
                 <p className="text-sm text-blue-700 font-semibold">
                   {product.category}
