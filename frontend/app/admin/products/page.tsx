@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/src/lib/api";
 
 type Product = {
   _id: string;
@@ -21,26 +22,38 @@ export default function AdminProductsPage() {
 
   async function fetchProducts() {
     try {
-      const res = await fetch("https://afrilinkcapital.onrender.com/products");
-      const data = await res.json();
+      const data = await apiFetch("/products");
 
       setProducts(data.products || []);
-      setLoading(false);
     } catch (error) {
       console.error(error);
-      setLoading(false);
       toast.error("Failed to load products");
+    } finally {
+      setLoading(false);
     }
   }
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
 
-    if (!token) {
+    if (!token || !savedUser) {
       toast.error("Admin login required");
 
       setTimeout(() => {
         window.location.href = "/login";
+      }, 1000);
+
+      return;
+    }
+
+    const user = JSON.parse(savedUser);
+
+    if (user.role !== "admin") {
+      toast.error("Admin access required");
+
+      setTimeout(() => {
+        window.location.href = "/";
       }, 1000);
 
       return;
@@ -55,22 +68,15 @@ export default function AdminProductsPage() {
     if (!confirmed) return;
 
     try {
-      const res = await fetch(`https://afrilinkcapital.onrender.com/products/${id}`, {
+      await apiFetch(`/products/${id}`, {
         method: "DELETE",
       });
 
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        toast.error(data.message || "Failed to delete product");
-        return;
-      }
-
       toast.success("Product deleted successfully");
       fetchProducts();
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(error.message || "Something went wrong");
     }
   }
 
@@ -142,9 +148,11 @@ export default function AdminProductsPage() {
                 </p>
 
                 <p className="text-gray-600">{product.price}</p>
+
                 <p className="text-gray-500 text-sm">
                   Origin: {product.origin}
                 </p>
+
                 <p className="text-gray-500 text-sm">
                   Delivery: {product.delivery}
                 </p>
