@@ -15,6 +15,49 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
+const JWT_SECRET = process.env.JWT_SECRET || "CHANGE_THIS_SECRET_NOW";
+
+function removePassword(user) {
+  const cleanUser = user.toObject ? user.toObject() : user;
+  delete cleanUser.password;
+  return cleanUser;
+}
+
+function authMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({
+      success: false,
+      message: "No token provided",
+    });
+  }
+
+  const token = authHeader.split(" ")[1];
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      success: false,
+      message: "Invalid or expired token",
+    });
+  }
+}
+
+function adminOnly(req, res, next) {
+  if (!req.user || req.user.role !== "admin") {
+    return res.status(403).json({
+      success: false,
+      message: "Admin access required",
+    });
+  }
+
+  next();
+}
+
 mongoose
   .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected successfully"))
@@ -28,8 +71,11 @@ app.get("/", (req, res) => {
 app.post("/requests", async (req, res) => {
   try {
     const newRequest = new Request({
-      ...req.body,
-      status: req.body.status || "Received",
+      title: req.body.title,
+      country: req.body.country,
+      quantity: req.body.quantity,
+      description: req.body.description,
+      status: "Received",
     });
 
     const savedRequest = await newRequest.save();
@@ -48,7 +94,7 @@ app.post("/requests", async (req, res) => {
   }
 });
 
-app.get("/requests", async (req, res) => {
+app.get("/requests", authMiddleware, async (req, res) => {
   try {
     const requests = await Request.find().sort({ createdAt: -1 });
     res.json({ success: true, requests });
@@ -61,7 +107,7 @@ app.get("/requests", async (req, res) => {
   }
 });
 
-app.get("/requests/:id", async (req, res) => {
+app.get("/requests/:id", authMiddleware, async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
 
@@ -82,7 +128,7 @@ app.get("/requests/:id", async (req, res) => {
   }
 });
 
-app.put("/requests/:id", async (req, res) => {
+app.put("/requests/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
     const updatedRequest = await Request.findByIdAndUpdate(
       req.params.id,
@@ -117,7 +163,7 @@ app.put("/requests/:id", async (req, res) => {
   }
 });
 
-app.delete("/requests/:id", async (req, res) => {
+app.delete("/requests/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
     const deletedRequest = await Request.findByIdAndDelete(req.params.id);
 
@@ -142,7 +188,7 @@ app.delete("/requests/:id", async (req, res) => {
 });
 
 // PRODUCTS
-app.post("/products", async (req, res) => {
+app.post("/products", authMiddleware, adminOnly, async (req, res) => {
   try {
     const product = await Product.create(req.body);
 
@@ -194,7 +240,7 @@ app.get("/products/:id", async (req, res) => {
   }
 });
 
-app.put("/products/:id", async (req, res) => {
+app.put("/products/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
@@ -206,7 +252,7 @@ app.put("/products/:id", async (req, res) => {
         origin: req.body.origin,
         description: req.body.description,
         image: req.body.image,
-        image: req.body.image,
+        video: req.body.video,
       },
       { new: true, runValidators: true }
     );
@@ -232,7 +278,7 @@ app.put("/products/:id", async (req, res) => {
   }
 });
 
-app.delete("/products/:id", async (req, res) => {
+app.delete("/products/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
 
@@ -259,7 +305,8 @@ app.delete("/products/:id", async (req, res) => {
 // AUTH
 app.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password } = req.body;
+    const role = "buyer";
 
     const existingUser = await User.findOne({ email });
 
@@ -282,7 +329,7 @@ app.post("/register", async (req, res) => {
     res.json({
       success: true,
       message: "User registered successfully",
-      user,
+      user: removePassword(user),
     });
   } catch (error) {
     res.status(500).json({
@@ -302,7 +349,7 @@ app.post("/login", async (req, res) => {
     if (!user) {
       return res.status(400).json({
         success: false,
-        message: "User not found",
+        message: "Invalid email or password",
       });
     }
 
@@ -311,7 +358,7 @@ app.post("/login", async (req, res) => {
     if (!isMatch) {
       return res.status(400).json({
         success: false,
-        message: "Invalid password",
+        message: "Invalid email or password",
       });
     }
 
@@ -320,7 +367,7 @@ app.post("/login", async (req, res) => {
         id: user._id,
         role: user.role,
       },
-      "SECRET_KEY",
+      JWT_SECRET,
       {
         expiresIn: "7d",
       }
@@ -330,7 +377,7 @@ app.post("/login", async (req, res) => {
       success: true,
       message: "Login successful",
       token,
-      user,
+      user: removePassword(user),
     });
   } catch (error) {
     res.status(500).json({
@@ -368,7 +415,7 @@ app.post("/quotations", async (req, res) => {
   }
 });
 
-const PORT = 5000;
+const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
