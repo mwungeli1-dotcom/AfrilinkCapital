@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/src/lib/api";
 
 export default function EditRequestPage() {
   const [id, setId] = useState("");
@@ -23,6 +24,23 @@ export default function EditRequestPage() {
   ];
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+
+    if (!token || !savedUser) {
+      alert("Admin login required");
+      window.location.href = "/login";
+      return;
+    }
+
+    const user = JSON.parse(savedUser);
+
+    if (user.role !== "admin") {
+      alert("Admin access required");
+      window.location.href = "/";
+      return;
+    }
+
     const parts = window.location.pathname.split("/");
     const requestId = parts[2];
 
@@ -34,8 +52,7 @@ export default function EditRequestPage() {
 
     async function fetchRequest() {
       try {
-        const res = await fetch(`http://afrilinkcapital.onrender.com/requests/${id}`);
-        const data = await res.json();
+        const data = await apiFetch(`/requests/${id}`);
 
         const request = data.request || data;
 
@@ -61,27 +78,23 @@ export default function EditRequestPage() {
       return;
     }
 
-    const res = await fetch(`http://afrilinkcapital.onrender.com/requests/${id}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        title,
-        country,
-        quantity,
-        description,
-        status,
-      }),
-    });
+    try {
+      await apiFetch(`/requests/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          title,
+          country,
+          quantity,
+          description,
+          status,
+        }),
+      });
 
-    const data = await res.json();
-
-    if (data.success || res.ok) {
       alert("Request updated successfully!");
       window.location.href = `/requests/${id}`;
-    } else {
-      alert(data.message || "Failed to update request");
+    } catch (error: any) {
+      console.error(error);
+      alert(error.message || "Failed to update request");
     }
   }
 
