@@ -1,3 +1,4 @@
+const SupplierApplication = require("./models/SupplierApplication");
 const express = require("express");
 const cors = require("cors");
 const mongoose = require("mongoose");
@@ -387,7 +388,151 @@ app.post("/login", async (req, res) => {
     });
   }
 });
+// SUPPLIER APPLICATIONS
 
+app.post("/supplier-applications", authMiddleware, async (req, res) => {
+  try {
+    const existingApplication = await SupplierApplication.findOne({
+      userId: req.user.id,
+      status: "Pending",
+    });
+
+    if (existingApplication) {
+      return res.status(400).json({
+        success: false,
+        message: "You already have a pending supplier application",
+      });
+    }
+
+    const application = await SupplierApplication.create({
+      userId: req.user.id,
+      companyName: req.body.companyName,
+      country: req.body.country,
+      contactPerson: req.body.contactPerson,
+      phone: req.body.phone,
+      website: req.body.website,
+      businessRegistration: req.body.businessRegistration,
+      productCategories: req.body.productCategories || [],
+      description: req.body.description,
+    });
+
+    res.json({
+      success: true,
+      message: "Supplier application submitted successfully",
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to submit supplier application",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/supplier-applications", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const applications = await SupplierApplication.find()
+      .populate("userId", "name email role")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      applications,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch supplier applications",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/supplier-applications/:id", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const application = await SupplierApplication.findById(req.params.id)
+      .populate("userId", "name email role");
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplier application not found",
+      });
+    }
+
+    res.json({
+      success: true,
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch supplier application",
+      error: error.message,
+    });
+  }
+});
+
+app.put("/supplier-applications/:id/approve", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const application = await SupplierApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplier application not found",
+      });
+    }
+
+    application.status = "Approved";
+    await application.save();
+
+    await User.findByIdAndUpdate(application.userId, {
+      role: "supplier",
+    });
+
+    res.json({
+      success: true,
+      message: "Supplier application approved successfully",
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to approve supplier application",
+      error: error.message,
+    });
+  }
+});
+
+app.put("/supplier-applications/:id/reject", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const application = await SupplierApplication.findById(req.params.id);
+
+    if (!application) {
+      return res.status(404).json({
+        success: false,
+        message: "Supplier application not found",
+      });
+    }
+
+    application.status = "Rejected";
+    await application.save();
+
+    res.json({
+      success: true,
+      message: "Supplier application rejected",
+      application,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Failed to reject supplier application",
+      error: error.message,
+    });
+  }
+});
 // QUOTATIONS
 app.post("/quotations", async (req, res) => {
   try {
