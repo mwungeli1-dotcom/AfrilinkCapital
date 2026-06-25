@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/src/lib/api";
 
 export default function EditProductPage() {
   const params = useParams();
@@ -22,20 +23,38 @@ export default function EditProductPage() {
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
+    const token = localStorage.getItem("token");
+    const savedUser = localStorage.getItem("user");
+
+    if (!token || !savedUser) {
+      toast.error("Admin login required");
+
+      setTimeout(() => {
+        window.location.href = "/login";
+      }, 1000);
+
+      return;
+    }
+
+    const user = JSON.parse(savedUser);
+
+    if (user.role !== "admin") {
+      toast.error("Admin access required");
+
+      setTimeout(() => {
+        window.location.href = "/";
+      }, 1000);
+
+      return;
+    }
+  }, []);
+
+  useEffect(() => {
     if (!id) return;
 
     async function fetchProduct() {
       try {
-        const res = await fetch(
-          `https://afrilinkcapital.onrender.com/products/${id}`
-        );
-
-        const data = await res.json();
-
-        if (!res.ok || data.success === false) {
-          toast.error(data.message || "Failed to load product");
-          return;
-        }
+        const data = await apiFetch(`/products/${id}`);
 
         const product = data.product || data;
 
@@ -47,9 +66,9 @@ export default function EditProductPage() {
         setDescription(product.description || "");
         setImage(product.image || "");
         setVideo(product.video || "");
-      } catch (error) {
+      } catch (error: any) {
         console.error(error);
-        toast.error("Failed to load product");
+        toast.error(error.message || "Failed to load product");
       } finally {
         setLoading(false);
       }
@@ -74,41 +93,28 @@ export default function EditProductPage() {
     try {
       setSaving(true);
 
-      const res = await fetch(
-        `https://afrilinkcapital.onrender.com/products/${id}`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            name,
-            category,
-            price,
-            delivery,
-            origin,
-            description,
-            image,
-            video,
-          }),
-        }
-      );
-
-      const data = await res.json();
-
-      if (!res.ok || data.success === false) {
-        toast.error(data.message || "Failed to update product");
-        return;
-      }
+      await apiFetch(`/products/${id}`, {
+        method: "PUT",
+        body: JSON.stringify({
+          name,
+          category,
+          price,
+          delivery,
+          origin,
+          description,
+          image,
+          video,
+        }),
+      });
 
       toast.success("Product updated successfully!");
 
       setTimeout(() => {
         window.location.href = "/admin/products";
       }, 800);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Something went wrong");
+      toast.error(error.message || "Something went wrong");
     } finally {
       setSaving(false);
     }
