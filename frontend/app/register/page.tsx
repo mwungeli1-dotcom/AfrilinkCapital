@@ -33,9 +33,14 @@ export default function RegisterPage() {
       } else {
         toast.error(data.message || "Registration failed");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      toast.error("Cannot connect to server");
+
+      toast.error(
+        error?.message ||
+        error?.response?.data?.message ||
+        "Registration failed"
+      );
     }
   }
 
