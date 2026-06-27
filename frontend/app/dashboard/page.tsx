@@ -55,11 +55,12 @@ export default function DashboardPage() {
         <div className="flex flex-col md:flex-row md:justify-between md:items-center gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold text-blue-950">
-              Afrilink Dashboard
+              Afrilink Trade Control Center
             </h1>
 
             <p className="text-gray-600 mt-2">
-              Manage procurement, products, requests, and platform operations.
+              Afrilink controls buyer requests, supplier sourcing, quotations,
+              orders, and margins.
             </p>
           </div>
 
@@ -78,14 +79,13 @@ export default function DashboardPage() {
           </p>
 
           <p className="text-sm text-gray-500 mt-2">Role: {user?.role}</p>
-
           <p className="text-sm text-gray-500">Email: {user?.email}</p>
         </div>
 
         {user?.role === "buyer" && (
           <>
             <h2 className="text-2xl font-bold text-blue-950 mb-4">
-              Buyer Actions
+              Buyer Center
             </h2>
 
             <div className="grid md:grid-cols-3 gap-6">
@@ -93,21 +93,35 @@ export default function DashboardPage() {
                 href="/products"
                 className="bg-blue-950 text-white p-6 rounded-2xl shadow hover:bg-yellow-400 hover:text-black transition"
               >
-                Browse Products
+                <h3 className="text-xl font-bold">Browse Products</h3>
+                <p className="mt-2 text-sm">
+                  View approved products from Afrilink Capital.
+                </p>
               </Link>
 
               <Link
                 href="/post-request"
                 className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
               >
-                Request Quotation
+                <h3 className="text-xl font-bold text-blue-950">
+                  Request Quotation
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Send your request to Afrilink Capital. No supplier contact is
+                  shared.
+                </p>
               </Link>
 
               <Link
                 href="/requests"
                 className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
               >
-                View My Requests
+                <h3 className="text-xl font-bold text-blue-950">
+                  My Requests
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Track your requests and official Afrilink quotations.
+                </p>
               </Link>
             </div>
           </>
@@ -116,19 +130,40 @@ export default function DashboardPage() {
         {user?.role === "supplier" && (
           <>
             <h2 className="text-2xl font-bold text-blue-950 mb-4">
-              Supplier Actions
+              Supplier Partner Center
             </h2>
 
             <div className="grid md:grid-cols-3 gap-6">
               <Link
-                href="/requests"
+                href="/admin/products/create"
                 className="bg-blue-950 text-white p-6 rounded-2xl shadow hover:bg-yellow-400 hover:text-black transition"
               >
-                Browse Buyer Requests
+                <h3 className="text-xl font-bold">Submit Product</h3>
+                <p className="mt-2 text-sm">
+                  Add products for Afrilink review. Buyers will not see your
+                  contact details.
+                </p>
+              </Link>
+
+              <Link
+                href="/admin/products"
+                className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
+              >
+                <h3 className="text-xl font-bold text-blue-950">
+                  My Products
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Manage products submitted to Afrilink.
+                </p>
               </Link>
 
               <div className="bg-white border p-6 rounded-2xl shadow">
-                Send Quotations Coming Soon
+                <h3 className="text-xl font-bold text-blue-950">
+                  Factory Price Requests
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Coming soon: Afrilink will request supplier pricing privately.
+                </p>
               </div>
             </div>
           </>
@@ -137,17 +172,51 @@ export default function DashboardPage() {
         {user?.role === "admin" && (
           <>
             <h2 className="text-2xl font-bold text-blue-950 mb-4">
-              Admin Control Center
+              Admin Trading Control Center
             </h2>
 
             <div className="grid md:grid-cols-3 gap-6">
+              <Link
+                href="/requests"
+                className="bg-blue-950 text-white p-6 rounded-2xl shadow hover:bg-yellow-400 hover:text-black transition"
+              >
+                <h3 className="text-xl font-bold">Buyer Requests</h3>
+                <p className="mt-2 text-sm">
+                  Review buyer requests, source suppliers privately, and prepare
+                  Afrilink quotations.
+                </p>
+              </Link>
+
+              <Link
+                href="/admin/suppliers"
+                className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
+              >
+                <h3 className="text-xl font-bold text-blue-950">
+                  Supplier Applications
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Approve or reject suppliers before they can partner with
+                  Afrilink.
+                </p>
+              </Link>
+
+              <div className="bg-white border p-6 rounded-2xl shadow">
+                <h3 className="text-xl font-bold text-blue-950">
+                  Create Afrilink Quotation
+                </h3>
+                <p className="mt-2 text-sm text-gray-600">
+                  Coming soon: add factory price, shipping, duties, and Afrilink
+                  margin.
+                </p>
+              </div>
+
               <Link
                 href="/admin/products/create"
                 className="bg-green-600 text-white p-6 rounded-2xl shadow hover:bg-green-700 transition"
               >
                 <h3 className="text-xl font-bold">+ Add Product</h3>
                 <p className="mt-2 text-sm">
-                  Add a new product to Afrilink Hub showroom.
+                  Add approved showroom products manually.
                 </p>
               </Link>
 
@@ -159,46 +228,17 @@ export default function DashboardPage() {
                   Manage Products
                 </h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  View, edit, and delete showroom products.
-                </p>
-              </Link>
-
-              <Link
-                href="/requests"
-                className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
-              >
-                <h3 className="text-xl font-bold text-blue-950">
-                  Manage Requests
-                </h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  Track procurement requests and update statuses.
+                  View, edit, approve, and delete showroom products.
                 </p>
               </Link>
 
               <div className="bg-white border p-6 rounded-2xl shadow">
                 <h3 className="text-xl font-bold text-blue-950">
-                  Manage Users
+                  Orders & Payments
                 </h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  User management coming soon.
-                </p>
-              </div>
-
-              <div className="bg-white border p-6 rounded-2xl shadow">
-                <h3 className="text-xl font-bold text-blue-950">
-                  Quotations
-                </h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  Quotation management coming soon.
-                </p>
-              </div>
-
-              <div className="bg-white border p-6 rounded-2xl shadow">
-                <h3 className="text-xl font-bold text-blue-950">
-                  Platform Settings
-                </h3>
-                <p className="mt-2 text-sm text-gray-600">
-                  System settings coming soon.
+                  Coming soon: track deposits, supplier payments, orders, and
+                  delivery.
                 </p>
               </div>
             </div>
