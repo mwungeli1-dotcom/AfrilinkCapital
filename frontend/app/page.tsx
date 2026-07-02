@@ -271,54 +271,6 @@ export default function Home() {
       </section>
 
       <WhatsAppButton />
-
-      <footer className="bg-blue-950 text-white px-6 py-10 border-t border-blue-800">
-        <div className="max-w-5xl mx-auto flex flex-col md:flex-row justify-between gap-6">
-          <div>
-            <h4 className="text-2xl font-bold text-yellow-400">
-              Afrilink Hub
-            </h4>
-            <p className="mt-3 text-gray-300">
-              Your import partner for Africa.
-            </p>
-            <p>
-  Facebook:
-  <a
-    href="https://www.facebook.com/afrilinkcapital"
-    target="_blank"
-    rel="noopener noreferrer"
-    className="text-yellow-400 ml-2"
-  >
-    Afrilink Capital
-  </a>
-</p>
-          </div>
-
-          <div>
-            <h5 className="font-semibold mb-3">Quick Links</h5>
-
-            <div className="flex flex-col gap-2">
-              <Link href="/products" className="hover:text-yellow-400">
-                Products
-              </Link>
-
-              <Link href="/post-request" className="hover:text-yellow-400">
-                Request Quotation
-              </Link>
-
-              <Link href="/contact" className="hover:text-yellow-400">
-                Contact
-              </Link>
-            </div>
-          </div>
-
-          <div>
-            <h5 className="font-semibold mb-3">Contact</h5>
-            <p>Lusaka, Zambia</p>
-            <p>WhatsApp: +260 777 777 079</p>
-          </div>
-        </div>
-      </footer>
     </main>
   );
 }
