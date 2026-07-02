@@ -85,7 +85,7 @@ export default function EditProductPage() {
       formData.append("file", file);
 
       // Big boss: change "afrilink" if your Cloudinary upload preset has a different name
-      formData.append("upload_preset", "afrilink");
+      formData.append("upload_preset", "afrilink_uploads");
 
       const res = await fetch(
         "https://api.cloudinary.com/v1_1/dsqmjywoxi/image/upload",
