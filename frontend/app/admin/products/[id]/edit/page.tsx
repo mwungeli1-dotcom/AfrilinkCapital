@@ -88,7 +88,7 @@ export default function EditProductPage() {
       formData.append("upload_preset", "afrilink_uploads");
 
       const res = await fetch(
-        "https://api.cloudinary.com/v1_1/dsqmjywoxi/image/upload",
+        "https://api.cloudinary.com/v1_1/dsqmjywox/image/upload",
         {
           method: "POST",
           body: formData,
@@ -96,6 +96,7 @@ export default function EditProductPage() {
       );
 
       const data = await res.json();
+      console.log(data);
 
       if (!data.secure_url) {
         throw new Error("Image upload failed");
@@ -103,10 +104,15 @@ export default function EditProductPage() {
 
       setImage(data.secure_url);
       toast.success("Image uploaded successfully!");
-    } catch (error) {
-      console.error(error);
-      toast.error("Failed to upload image");
-    } finally {
+    } catch (error: any) {
+  console.error(error);
+
+  if (error?.message) {
+    toast.error(error.message);
+  } else {
+    toast.error("Failed to upload image");
+  }
+}finally {
       setUploading(false);
     }
   }
