@@ -21,6 +21,7 @@ export default function EditProductPage() {
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -55,7 +56,6 @@ export default function EditProductPage() {
     async function fetchProduct() {
       try {
         const data = await apiFetch(`/products/${id}`);
-
         const product = data.product || data;
 
         setName(product.name || "");
@@ -76,6 +76,40 @@ export default function EditProductPage() {
 
     fetchProduct();
   }, [id]);
+
+  async function uploadImage(file: File) {
+    try {
+      setUploading(true);
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      // Big boss: change "afrilink" if your Cloudinary upload preset has a different name
+      formData.append("upload_preset", "afrilink");
+
+      const res = await fetch(
+        "https://api.cloudinary.com/v1_1/dsqmjywoxi/image/upload",
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      const data = await res.json();
+
+      if (!data.secure_url) {
+        throw new Error("Image upload failed");
+      }
+
+      setImage(data.secure_url);
+      toast.success("Image uploaded successfully!");
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to upload image");
+    } finally {
+      setUploading(false);
+    }
+  }
 
   async function handleUpdate(e: React.FormEvent) {
     e.preventDefault();
@@ -181,12 +215,46 @@ export default function EditProductPage() {
             onChange={(e) => setOrigin(e.target.value)}
           />
 
-          <input
-            className="w-full border p-3 rounded-lg"
-            placeholder="Image URL"
-            value={image}
-            onChange={(e) => setImage(e.target.value)}
-          />
+          <div className="space-y-3 border rounded-xl p-4">
+            <label className="block font-semibold text-gray-700">
+              Product Image
+            </label>
+
+            <input
+              className="w-full border p-3 rounded-lg"
+              placeholder="Image URL"
+              value={image}
+              onChange={(e) => setImage(e.target.value)}
+            />
+
+            <input
+              type="file"
+              accept="image/*"
+              className="w-full border p-3 rounded-lg bg-gray-50"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                uploadImage(file);
+              }}
+            />
+
+            {uploading && (
+              <p className="text-blue-700 font-semibold">
+                Uploading image...
+              </p>
+            )}
+
+            {image && (
+              <div className="border rounded-xl p-4 bg-gray-50">
+                <p className="font-semibold mb-2">Image Preview</p>
+                <img
+                  src={image}
+                  alt="Product preview"
+                  className="w-full max-h-64 object-contain rounded-xl"
+                />
+              </div>
+            )}
+          </div>
 
           <input
             className="w-full border p-3 rounded-lg"
@@ -194,17 +262,6 @@ export default function EditProductPage() {
             value={video}
             onChange={(e) => setVideo(e.target.value)}
           />
-
-          {image && (
-            <div className="border rounded-xl p-4">
-              <p className="font-semibold mb-2">Image Preview</p>
-              <img
-                src={image}
-                alt="Product preview"
-                className="w-full max-h-64 object-cover rounded-xl"
-              />
-            </div>
-          )}
 
           {video && (
             <div className="border rounded-xl p-4">
@@ -226,10 +283,14 @@ export default function EditProductPage() {
 
           <button
             type="submit"
-            disabled={saving}
+            disabled={saving || uploading}
             className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-lg disabled:bg-gray-400"
           >
-            {saving ? "Saving Product..." : "Save Product"}
+            {saving
+              ? "Saving Product..."
+              : uploading
+              ? "Uploading Image..."
+              : "Save Product"}
           </button>
         </form>
       </div>
