@@ -563,21 +563,42 @@ app.put("/supplier-applications/:id/reject", authMiddleware, adminOnly, async (r
   }
 });
 // QUOTATIONS
-app.post("/quotations", async (req, res) => {
+app.post("/quotations", authMiddleware, adminOnly, async (req, res) => {
   try {
-    const { supplierName, supplierEmail, requestId, price, message } = req.body;
+    const { supplierName, supplierEmail, requestId, currency = "ZMW", supplierCost,
+      freightCost = 0, customsCost = 0, serviceFee = 0, markupAmount = 0,
+      deliveryTime, validityDays = 14, terms, notes, status = "Draft" } = req.body;
+
+    if (!supplierName || !requestId || !deliveryTime || supplierCost === undefined) {
+      return res.status(400).json({ success: false, message: "Supplier, request, supplier cost, and delivery time are required" });
+    }
+
+    const request = await Request.findById(requestId);
+    if (!request) return res.status(404).json({ success: false, message: "Request not found" });
+
+    const amounts = [supplierCost, freightCost, customsCost, serviceFee, markupAmount].map(Number);
+    if (amounts.some((amount) => !Number.isFinite(amount) || amount < 0)) {
+      return res.status(400).json({ success: false, message: "Quotation amounts must be valid positive numbers" });
+    }
+
+    const totalAmount = amounts.reduce((sum, amount) => sum + amount, 0);
+    const quotationNumber = `AFC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
     const quotation = await Quotation.create({
-      supplierName,
-      supplierEmail,
-      requestId,
-      price,
-      message,
+      quotationNumber, supplierName, supplierEmail, requestId, currency,
+      supplierCost: amounts[0], freightCost: amounts[1], customsCost: amounts[2],
+      serviceFee: amounts[3], markupAmount: amounts[4], totalAmount,
+      deliveryTime, validityDays, terms, notes, status, createdBy: req.user.id,
     });
+
+    if (status === "Sent") {
+      request.status = "Quotation Ready";
+      await request.save();
+    }
 
     res.json({
       success: true,
-      message: "Quotation submitted successfully",
+      message: "Quotation created successfully",
       quotation,
     });
   } catch (error) {
@@ -586,6 +607,38 @@ app.post("/quotations", async (req, res) => {
       message: "Failed to submit quotation",
       error: error.message,
     });
+  }
+});
+
+app.get("/requests/:id/quotations", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const quotations = await Quotation.find({ requestId: req.params.id }).sort({ createdAt: -1 });
+    res.json({ success: true, quotations });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch quotations", error: error.message });
+  }
+});
+
+app.put("/quotations/:id/status", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const allowedStatuses = ["Draft", "Sent", "Accepted", "Rejected", "Expired"];
+    if (!allowedStatuses.includes(req.body.status)) {
+      return res.status(400).json({ success: false, message: "Invalid quotation status" });
+    }
+
+    const quotation = await Quotation.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status },
+      { new: true, runValidators: true }
+    );
+    if (!quotation) return res.status(404).json({ success: false, message: "Quotation not found" });
+
+    if (req.body.status === "Sent") {
+      await Request.findByIdAndUpdate(quotation.requestId, { status: "Quotation Ready" });
+    }
+    res.json({ success: true, quotation });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update quotation", error: error.message });
   }
 });
 
