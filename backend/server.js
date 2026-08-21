@@ -614,6 +614,53 @@ app.put("/profile/password", authMiddleware, async (req, res) => {
     res.status(500).json({ success: false, message: "Failed to change password", error: error.message });
   }
 });
+
+app.get("/admin/overview", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const [requestCount, activeOrders, pendingSuppliers, pendingProducts, quotationTotals, productCommissions] = await Promise.all([
+      Request.countDocuments(),
+      Request.countDocuments({ status: { $in: ["Ordered", "Shipping"] } }),
+      SupplierApplication.countDocuments({ status: "Pending" }),
+      Product.countDocuments({ status: "Pending" }),
+      Quotation.aggregate([
+        { $group: {
+          _id: "$currency",
+          quotations: { $sum: 1 },
+          quoted: { $sum: "$totalAmount" },
+          collected: { $sum: "$amountPaid" },
+          grossProfit: { $sum: { $add: ["$serviceFee", "$markupAmount"] } },
+        } },
+      ]),
+      Product.aggregate([
+        { $match: { status: "Approved", supplierPrice: { $exists: true }, publicPrice: { $exists: true } } },
+        { $group: { _id: "$currency", commission: { $sum: { $subtract: ["$publicPrice", "$supplierPrice"] } } } },
+      ]),
+    ]);
+
+    const financials = quotationTotals.map((item) => ({
+      currency: item._id || "USD",
+      quotations: item.quotations,
+      quoted: item.quoted,
+      collected: item.collected,
+      balance: Math.max(item.quoted - item.collected, 0),
+      grossProfit: item.grossProfit,
+    }));
+
+    res.json({
+      success: true,
+      overview: {
+        requestCount,
+        activeOrders,
+        pendingSuppliers,
+        pendingProducts,
+        financials,
+        catalogueCommissions: productCommissions.map((item) => ({ currency: item._id || "USD", commission: item.commission })),
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load admin overview", error: error.message });
+  }
+});
 // SUPPLIER APPLICATIONS
 
 app.post("/supplier-applications", authMiddleware, async (req, res) => {
