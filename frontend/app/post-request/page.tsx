@@ -4,6 +4,10 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 
 type RequestItem = {
+  customerName: string;
+  phone: string;
+  email: string;
+  deliveryLocation: string;
   title: string;
   description: string;
   quantity: string;
@@ -11,6 +15,10 @@ type RequestItem = {
 };
 
 export default function PostRequestPage() {
+  const [customerName, setCustomerName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [quantity, setQuantity] = useState("");
@@ -33,12 +41,24 @@ export default function PostRequestPage() {
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
-  if (!title || !description || !quantity || !country) {
+  if (
+    !customerName ||
+    !phone ||
+    !deliveryLocation ||
+    !title ||
+    !description ||
+    !quantity ||
+    !country
+  ) {
     toast.error("Please fill in all fields");
     return;
   }
 
   const newRequest = {
+    customerName,
+    phone,
+    email,
+    deliveryLocation,
     title,
     description,
     quantity,
@@ -66,9 +86,13 @@ export default function PostRequestPage() {
     setDescription("");
     setQuantity("");
     setCountry("");
+    setCustomerName("");
+    setPhone("");
+    setEmail("");
+    setDeliveryLocation("");
 
     setTimeout(() => {
-      window.location.href = "/requests";
+      window.location.href = "/";
     }, 1000);
   } catch (error) {
     console.error(error);
@@ -88,6 +112,74 @@ export default function PostRequestPage() {
         </p>
 
         <form className="space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-2xl bg-blue-50 p-5">
+            <h2 className="text-xl font-bold text-blue-950">Your contact details</h2>
+            <p className="mt-1 text-sm text-gray-600">
+              Afrilink will use these details to confirm specifications and send your quotation.
+            </p>
+
+            <div className="mt-5 grid gap-5 md:grid-cols-2">
+              <div>
+                <label htmlFor="customer-name" className="block mb-2 font-semibold">Full Name</label>
+                <input
+                  id="customer-name"
+                  name="customerName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={customerName}
+                  onChange={(event) => setCustomerName(event.target.value)}
+                  placeholder="Your full name"
+                  className="w-full rounded-xl border border-gray-300 bg-white p-4"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="customer-phone" className="block mb-2 font-semibold">Phone / WhatsApp</label>
+                <input
+                  id="customer-phone"
+                  name="phone"
+                  type="tel"
+                  autoComplete="tel"
+                  required
+                  value={phone}
+                  onChange={(event) => setPhone(event.target.value)}
+                  placeholder="Example: +260 777 777 079"
+                  className="w-full rounded-xl border border-gray-300 bg-white p-4"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="customer-email" className="block mb-2 font-semibold">Email <span className="font-normal text-gray-500">(optional)</span></label>
+                <input
+                  id="customer-email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  value={email}
+                  onChange={(event) => setEmail(event.target.value)}
+                  placeholder="you@company.com"
+                  className="w-full rounded-xl border border-gray-300 bg-white p-4"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="delivery-location" className="block mb-2 font-semibold">Delivery Town / Area</label>
+                <input
+                  id="delivery-location"
+                  name="deliveryLocation"
+                  type="text"
+                  autoComplete="address-level2"
+                  required
+                  value={deliveryLocation}
+                  onChange={(event) => setDeliveryLocation(event.target.value)}
+                  placeholder="Example: Lusaka, Chilenje"
+                  className="w-full rounded-xl border border-gray-300 bg-white p-4"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
             <label htmlFor="request-title" className="block mb-2 font-semibold">Product Title</label>
 
