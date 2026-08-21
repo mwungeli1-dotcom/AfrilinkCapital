@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import BuyerOnly from "./BuyerOnly";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -83,9 +84,7 @@ export default function Header() {
           Products
         </Link>
 
-        <Link href="/post-request" className="hover:text-yellow-400">
-          Request Quotation
-        </Link>
+        <BuyerOnly><Link href="/post-request" className="hover:text-yellow-400">Request Quotation</Link></BuyerOnly>
 
         <Link href="/contact" className="hover:text-yellow-400">
           Contact
