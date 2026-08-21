@@ -5,20 +5,23 @@ import { useEffect, useState } from "react";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
-  const [{ isLoggedIn, isAdmin }, setAuthState] = useState({
+  const [{ isLoggedIn, isAdmin, role }, setAuthState] = useState({
     isLoggedIn: false,
     isAdmin: false,
+    role: "",
   });
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const savedUser = localStorage.getItem("user");
     let savedUserIsAdmin = false;
+    let savedRole = "";
 
     if (savedUser) {
       try {
         const user = JSON.parse(savedUser);
-        savedUserIsAdmin = user?.role === "admin";
+        savedRole = user?.role || "";
+        savedUserIsAdmin = ["admin", "super_admin"].includes(savedRole);
       } catch {
         savedUserIsAdmin = false;
       }
@@ -26,7 +29,7 @@ export default function Header() {
 
     // This effect synchronizes navigation with the browser's persisted session.
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin });
+    setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin, role: savedRole });
   }, []);
 
   function logout() {
@@ -80,12 +83,16 @@ export default function Header() {
 
         {isLoggedIn ? (
           <>
+            <Link href="/dashboard" className="hover:text-yellow-400">
+              Dashboard
+            </Link>
+            {role === "buyer" && (
+              <Link href="/become-supplier" className="hover:text-yellow-400">
+                Become a Supplier
+              </Link>
+            )}
             {isAdmin && (
               <>
-                <Link href="/dashboard" className="hover:text-yellow-400">
-                  Admin Dashboard
-                </Link>
-
                 <Link href="/admin/products" className="hover:text-yellow-400">
                   Manage Products
                 </Link>
@@ -108,6 +115,9 @@ export default function Header() {
 
             <Link href="/register" className="hover:text-yellow-400">
               Register
+            </Link>
+            <Link href="/register?type=supplier" className="rounded-lg bg-yellow-400 px-3 py-2 font-semibold text-blue-950 hover:bg-yellow-300">
+              Supplier Registration
             </Link>
           </>
         )}
