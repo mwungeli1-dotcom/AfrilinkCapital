@@ -14,15 +14,21 @@ type Product = {
   origin: string;
   description?: string;
   image?: string;
+  status?: "Pending" | "Approved" | "Rejected";
+  rejectionReason?: string;
+  supplierId?: { name?: string; email?: string } | string;
 };
 
 export default function AdminProductsPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [role, setRole] = useState<"admin" | "supplier">("admin");
 
   async function fetchProducts() {
     try {
-      const data = await apiFetch("/products");
+      const savedUser = localStorage.getItem("user");
+      const currentRole = savedUser ? JSON.parse(savedUser).role : "";
+      const data = await apiFetch(currentRole === "supplier" ? "/supplier/products" : "/admin/products");
 
       setProducts(data.products || []);
     } catch (error) {
@@ -38,7 +44,7 @@ export default function AdminProductsPage() {
     const savedUser = localStorage.getItem("user");
 
     if (!token || !savedUser) {
-      toast.error("Admin login required");
+      toast.error("Please login first");
 
       setTimeout(() => {
         window.location.href = "/login";
@@ -49,8 +55,8 @@ export default function AdminProductsPage() {
 
     const user = JSON.parse(savedUser);
 
-    if (user.role !== "admin") {
-      toast.error("Admin access required");
+    if (!["admin", "super_admin", "supplier"].includes(user.role)) {
+      toast.error("Supplier or admin access required");
 
       setTimeout(() => {
         window.location.href = "/";
@@ -58,6 +64,10 @@ export default function AdminProductsPage() {
 
       return;
     }
+
+    // This synchronizes the catalogue view with the authenticated browser session.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setRole(user.role === "supplier" ? "supplier" : "admin");
 
     fetchProducts();
   }, []);
@@ -74,9 +84,23 @@ export default function AdminProductsPage() {
 
       toast.success("Product deleted successfully");
       fetchProducts();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "Something went wrong");
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
+    }
+  }
+
+  async function reviewProduct(id: string, status: "Approved" | "Rejected") {
+    let rejectionReason = "";
+    if (status === "Rejected") {
+      rejectionReason = prompt("Tell the supplier what must be corrected:") || "Needs revision";
+    }
+    try {
+      await apiFetch(`/products/${id}/approval`, { method: "PUT", body: JSON.stringify({ status, rejectionReason }) });
+      toast.success(`Product ${status.toLowerCase()}`);
+      fetchProducts();
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Review failed");
     }
   }
 
@@ -89,11 +113,11 @@ export default function AdminProductsPage() {
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-4xl font-bold text-blue-900">
-            Admin Product Management
+            {role === "supplier" ? "My Product Catalogue" : "Admin Product Review"}
           </h1>
 
           <p className="text-gray-600 mt-2">
-            Manage Afrilink Hub showroom products.
+            {role === "supplier" ? "Submit products to Afrilink and track their approval." : "Review supplier submissions and manage showroom products."}
           </p>
         </div>
 
@@ -101,7 +125,7 @@ export default function AdminProductsPage() {
           href="/admin/products/create"
           className="bg-blue-900 text-white px-5 py-3 rounded-xl text-center"
         >
-          Add New Product
+          {role === "supplier" ? "Submit New Product" : "Add New Product"}
         </Link>
       </div>
 
@@ -112,7 +136,7 @@ export default function AdminProductsPage() {
           </h2>
 
           <p className="text-gray-600 mt-2">
-            Create your first product for the Afrilink Hub showroom.
+            {role === "supplier" ? "Submit your first product for Afrilink review." : "Create your first product for the Afrilink Hub showroom."}
           </p>
         </div>
       )}
@@ -156,10 +180,24 @@ export default function AdminProductsPage() {
                 <p className="text-gray-500 text-sm">
                   Delivery: {product.delivery}
                 </p>
+
+                <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${product.status === "Approved" ? "bg-green-100 text-green-800" : product.status === "Rejected" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>
+                  {product.status || "Approved"}
+                </span>
+                {role === "admin" && typeof product.supplierId === "object" && (
+                  <p className="mt-2 text-sm text-gray-600">Supplier: {product.supplierId?.name || product.supplierId?.email || "Afrilink"}</p>
+                )}
+                {product.rejectionReason && <p className="mt-2 text-sm text-red-700">Revision: {product.rejectionReason}</p>}
               </div>
             </div>
 
             <div className="flex flex-wrap gap-3">
+              {role === "admin" && product.status !== "Approved" && (
+                <button onClick={() => reviewProduct(product._id, "Approved")} className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700">Approve</button>
+              )}
+              {role === "admin" && product.status !== "Rejected" && (
+                <button onClick={() => reviewProduct(product._id, "Rejected")} className="rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700">Request Revision</button>
+              )}
               <Link
                 href={`/products/${product._id}`}
                 className="bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg"
