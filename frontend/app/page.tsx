@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/src/lib/api";
+import BuyerOnly from "@/components/BuyerOnly";
 
 type Product = {
   _id: string;
@@ -57,12 +58,12 @@ export default function Home() {
             Browse Products
           </Link>
 
-          <Link
+          <BuyerOnly><Link
             href="/post-request"
             className="bg-white text-blue-950 px-8 py-4 rounded-xl hover:bg-yellow-400 transition duration-300"
           >
             Request a Quotation
-          </Link>
+          </Link></BuyerOnly>
 
           <Link
             href="/contact"
@@ -98,9 +99,9 @@ export default function Home() {
             <p className="text-gray-600 mt-2">
               Please browse the showroom again shortly or request a quotation directly.
             </p>
-            <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+            <BuyerOnly><Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
               Request a Quotation
-            </Link>
+            </Link></BuyerOnly>
           </div>
         ) : products.length === 0 ? (
           <div className="bg-white p-8 rounded-2xl shadow text-center max-w-2xl mx-auto">
@@ -111,9 +112,9 @@ export default function Home() {
               Our catalogue is being updated. Afrilink Capital can still source
               machinery, equipment and commercial products for you.
             </p>
-            <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+            <BuyerOnly><Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
               Request a Quotation
-            </Link>
+            </Link></BuyerOnly>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -342,12 +343,12 @@ export default function Home() {
           Send your requirements and let Afrilink Capital prepare the sourcing
           and delivery plan.
         </p>
-        <Link
+        <BuyerOnly><Link
           href="/post-request"
           className="mt-8 inline-block rounded-xl bg-blue-950 px-8 py-4 font-bold text-white transition hover:bg-blue-900"
         >
           Request a Quotation
-        </Link>
+        </Link></BuyerOnly>
       </section>
 
     </main>

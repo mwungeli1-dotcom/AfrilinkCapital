@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { apiFetch } from "@/src/lib/api";
+import BuyerOnly from "@/components/BuyerOnly";
 
 type Product = {
   _id: string;
@@ -133,9 +134,9 @@ export default function ProductsPage() {
           <p className="text-gray-600 mt-2">
             Please try again shortly or tell us what you need and we will source it for you.
           </p>
-          <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+          <BuyerOnly><Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
             Request a Quotation
-          </Link>
+          </Link></BuyerOnly>
         </div>
       ) : products.length === 0 && (
         <div className="bg-white p-8 rounded-2xl shadow text-center">
@@ -145,9 +146,9 @@ export default function ProductsPage() {
           <p className="text-gray-600 mt-2">
             The catalogue is being updated. Afrilink Capital can source your product directly.
           </p>
-          <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+          <BuyerOnly><Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
             Request a Quotation
-          </Link>
+          </Link></BuyerOnly>
         </div>
       )}
 
