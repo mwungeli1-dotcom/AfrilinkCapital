@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
 import { apiFetch } from "@/src/lib/api";
+import { downloadQuotationPdf, type PdfQuotation } from "@/src/lib/quotationPdf";
 
 type RequestItem = {
   title: string;
@@ -18,19 +20,19 @@ type RequestItem = {
 
 export default function RequestDetails() {
   const [request, setRequest] = useState<RequestItem | null>(null);
+  const [quotations, setQuotations] = useState<Array<PdfQuotation & { _id: string; status: string }>>([]);
   const [error, setError] = useState("");
-
-  const id =
-    typeof window !== "undefined"
-      ? window.location.pathname.split("/").pop()
-      : "";
+  const { idi: id } = useParams<{ idi: string }>();
 
   useEffect(() => {
     if (!id) return;
 
     async function fetchRequest() {
       try {
-        const data = await apiFetch(`/requests/${id}`);
+        const [data, quotationData] = await Promise.all([
+          apiFetch(`/requests/${id}`),
+          apiFetch(`/requests/${id}/quotations`),
+        ]);
 
         console.log("DETAIL DATA:", data);
 
@@ -41,6 +43,7 @@ export default function RequestDetails() {
         } else {
           setError("Request data not found");
         }
+        setQuotations(quotationData.quotations || []);
       } catch (err) {
         console.error(err);
         setError("Failed to load request details");
@@ -76,6 +79,12 @@ export default function RequestDetails() {
             className="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg"
           >
             Edit
+          </a>
+          <a
+            href={`/requests/${id}/quote`}
+            className="bg-blue-950 hover:bg-blue-800 text-white px-4 py-2 rounded-lg"
+          >
+            Create Quotation
           </a>
         </div>
 
@@ -131,6 +140,21 @@ export default function RequestDetails() {
         <p className="text-gray-700 mb-8">
           {request.description || "No description provided"}
         </p>
+
+        <section className="mb-8 rounded-2xl border border-gray-200 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div><h2 className="text-xl font-bold text-blue-950">Afrilink Quotations</h2><p className="text-sm text-gray-600">Private costing and official buyer totals.</p></div>
+            <a href={`/requests/${id}/quote`} className="rounded-lg bg-yellow-400 px-4 py-2 font-semibold text-blue-950">New quotation</a>
+          </div>
+          {quotations.length === 0 ? <p className="mt-5 rounded-xl bg-gray-50 p-4 text-gray-600">No quotation created yet.</p> :
+            <div className="mt-5 space-y-3">{quotations.map((quotation) => (
+              <div key={quotation._id} className="flex flex-wrap items-center justify-between gap-4 rounded-xl bg-gray-50 p-4">
+                <div><p className="font-bold text-blue-950">{quotation.quotationNumber}</p><p className="text-sm text-gray-600">{quotation.status} · {quotation.deliveryTime}</p></div>
+                <div className="text-right"><p className="font-bold">{quotation.currency} {quotation.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
+                  <button onClick={() => downloadQuotationPdf(quotation, request)} className="text-sm font-semibold text-blue-700 hover:underline">Download PDF</button></div>
+              </div>
+            ))}</div>}
+        </section>
 
         <div className="bg-blue-50 p-5 rounded-xl">
           <h2 className="text-lg font-bold text-blue-950 mb-2">
