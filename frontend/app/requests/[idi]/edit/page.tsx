@@ -2,11 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { apiFetch } from "@/src/lib/api";
+import { useParams } from "next/navigation";
 
 export default function EditRequestPage() {
-  const [id, setId] = useState("");
+  const { idi: id } = useParams<{ idi: string }>();
 
   const [title, setTitle] = useState("");
+  const [customerName, setCustomerName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [deliveryLocation, setDeliveryLocation] = useState("");
   const [country, setCountry] = useState("");
   const [quantity, setQuantity] = useState("");
   const [description, setDescription] = useState("");
@@ -41,10 +46,6 @@ export default function EditRequestPage() {
       return;
     }
 
-    const parts = window.location.pathname.split("/");
-    const requestId = parts[2];
-
-    setId(requestId);
   }, []);
 
   useEffect(() => {
@@ -57,6 +58,10 @@ export default function EditRequestPage() {
         const request = data.request || data;
 
         setTitle(request.title || "");
+        setCustomerName(request.customerName || "");
+        setPhone(request.phone || "");
+        setEmail(request.email || "");
+        setDeliveryLocation(request.deliveryLocation || "");
         setCountry(request.country || "");
         setQuantity(request.quantity || "");
         setDescription(request.description || "");
@@ -82,6 +87,10 @@ export default function EditRequestPage() {
       await apiFetch(`/requests/${id}`, {
         method: "PUT",
         body: JSON.stringify({
+          customerName,
+          phone,
+          email,
+          deliveryLocation,
           title,
           country,
           quantity,
@@ -92,9 +101,9 @@ export default function EditRequestPage() {
 
       alert("Request updated successfully!");
       window.location.href = `/requests/${id}`;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      alert(error.message || "Failed to update request");
+      alert(error instanceof Error ? error.message : "Failed to update request");
     }
   }
 
@@ -117,6 +126,25 @@ export default function EditRequestPage() {
         </p>
 
         <form onSubmit={handleUpdate} className="space-y-4">
+          <div className="grid gap-4 rounded-xl bg-blue-50 p-4 md:grid-cols-2">
+            <div>
+              <label className="block mb-2 font-semibold">Customer Name</label>
+              <input className="w-full border p-3 rounded-lg" value={customerName} onChange={(e) => setCustomerName(e.target.value)} />
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold">Phone / WhatsApp</label>
+              <input className="w-full border p-3 rounded-lg" value={phone} onChange={(e) => setPhone(e.target.value)} />
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold">Email</label>
+              <input type="email" className="w-full border p-3 rounded-lg" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </div>
+            <div>
+              <label className="block mb-2 font-semibold">Delivery Town / Area</label>
+              <input className="w-full border p-3 rounded-lg" value={deliveryLocation} onChange={(e) => setDeliveryLocation(e.target.value)} />
+            </div>
+          </div>
+
           <div>
             <label className="block mb-2 font-semibold">Product Title</label>
             <input
