@@ -10,6 +10,10 @@ type Product = {
   name: string;
   category: string;
   price: string;
+  supplierPrice?: number;
+  publicPrice?: number;
+  markupPercent?: number;
+  currency?: "USD" | "ZMW";
   delivery: string;
   origin: string;
   description?: string;
@@ -171,7 +175,13 @@ export default function AdminProductsPage() {
                   {product.category}
                 </p>
 
-                <p className="text-gray-600">{product.price}</p>
+                {product.supplierPrice !== undefined ? (
+                  <div className="mt-2 text-sm">
+                    <p className="text-gray-600">Supplier price: {product.currency} {product.supplierPrice.toLocaleString()}</p>
+                    <p className="text-blue-700">Afrilink commission ({product.markupPercent || 20}%): {product.currency} {((product.publicPrice || 0) - product.supplierPrice).toLocaleString()}</p>
+                    <p className="font-bold text-green-700">Buyer price: {product.currency} {(product.publicPrice || 0).toLocaleString()}</p>
+                  </div>
+                ) : <p className="text-gray-600">Buyer price: {product.price}</p>}
 
                 <p className="text-gray-500 text-sm">
                   Origin: {product.origin}
