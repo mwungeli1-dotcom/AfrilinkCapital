@@ -48,6 +48,22 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function optionalAuthMiddleware(req, res, next) {
+  const authHeader = req.headers.authorization;
+
+  if (!authHeader) return next();
+  if (!authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ success: false, message: "Invalid authorization header" });
+  }
+
+  try {
+    req.user = jwt.verify(authHeader.split(" ")[1], JWT_SECRET);
+    next();
+  } catch (error) {
+    return res.status(401).json({ success: false, message: "Invalid or expired token" });
+  }
+}
+
 function adminOnly(req, res, next) {
   if (!req.user || !["admin", "super_admin"].includes(req.user.role)) {
     return res.status(403).json({
@@ -69,7 +85,7 @@ app.get("/", (req, res) => {
 });
 
 // REQUESTS
-app.post("/requests", async (req, res) => {
+app.post("/requests", optionalAuthMiddleware, async (req, res) => {
   try {
     const requiredFields = [
       "customerName",
@@ -93,6 +109,7 @@ app.post("/requests", async (req, res) => {
     }
 
     const newRequest = new Request({
+      userId: req.user?.id,
       customerName: req.body.customerName,
       phone: req.body.phone,
       email: req.body.email,
@@ -120,7 +137,7 @@ app.post("/requests", async (req, res) => {
   }
 });
 
-app.get("/requests", authMiddleware, async (req, res) => {
+app.get("/requests", authMiddleware, adminOnly, async (req, res) => {
   try {
     const requests = await Request.find().sort({ createdAt: -1 });
     res.json({ success: true, requests });
@@ -133,7 +150,7 @@ app.get("/requests", authMiddleware, async (req, res) => {
   }
 });
 
-app.get("/requests/:id", authMiddleware, async (req, res) => {
+app.get("/requests/:id", authMiddleware, adminOnly, async (req, res) => {
   try {
     const request = await Request.findById(req.params.id);
 
@@ -151,6 +168,72 @@ app.get("/requests/:id", authMiddleware, async (req, res) => {
       message: "Failed to fetch request",
       error: error.message,
     });
+  }
+});
+
+app.get("/my/requests", authMiddleware, async (req, res) => {
+  try {
+    const requests = await Request.find({ userId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, requests });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch your requests", error: error.message });
+  }
+});
+
+app.get("/my/requests/:id", authMiddleware, async (req, res) => {
+  try {
+    const request = await Request.findOne({ _id: req.params.id, userId: req.user.id });
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Request not found" });
+    }
+
+    const quotations = await Quotation.find({
+      requestId: request._id,
+      status: { $in: ["Sent", "Accepted", "Rejected", "Expired"] },
+    })
+      .select("quotationNumber currency freightCost customsCost serviceFee totalAmount deliveryTime validityDays terms notes status paymentStatus amountPaid createdAt")
+      .sort({ createdAt: -1 });
+
+    res.json({
+      success: true,
+      request,
+      quotations: quotations.map((quotation) => ({
+        ...quotation.toObject(),
+        balance: Math.max(quotation.totalAmount - quotation.amountPaid, 0),
+      })),
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch request details", error: error.message });
+  }
+});
+
+app.put("/my/quotations/:id/status", authMiddleware, async (req, res) => {
+  try {
+    if (!["Accepted", "Rejected"].includes(req.body.status)) {
+      return res.status(400).json({ success: false, message: "Choose Accepted or Rejected" });
+    }
+
+    const quotation = await Quotation.findById(req.params.id);
+    if (!quotation || quotation.status !== "Sent") {
+      return res.status(404).json({ success: false, message: "Active quotation not found" });
+    }
+
+    const request = await Request.findOne({ _id: quotation.requestId, userId: req.user.id });
+    if (!request) {
+      return res.status(404).json({ success: false, message: "Quotation not found" });
+    }
+
+    quotation.status = req.body.status;
+    if (req.body.status === "Accepted") quotation.acceptedAt = new Date();
+    if (req.body.status === "Rejected") quotation.rejectedAt = new Date();
+    await quotation.save();
+
+    request.status = req.body.status === "Accepted" ? "Awaiting Deposit" : "Reviewing";
+    await request.save();
+
+    res.json({ success: true, message: `Quotation ${req.body.status.toLowerCase()}`, status: quotation.status });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update quotation", error: error.message });
   }
 });
 
