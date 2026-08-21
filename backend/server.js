@@ -71,7 +71,32 @@ app.get("/", (req, res) => {
 // REQUESTS
 app.post("/requests", async (req, res) => {
   try {
+    const requiredFields = [
+      "customerName",
+      "phone",
+      "deliveryLocation",
+      "title",
+      "description",
+      "quantity",
+      "country",
+    ];
+    const missingFields = requiredFields.filter(
+      (field) => !String(req.body[field] || "").trim()
+    );
+
+    if (missingFields.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide your contact details and complete product requirements",
+        missingFields,
+      });
+    }
+
     const newRequest = new Request({
+      customerName: req.body.customerName,
+      phone: req.body.phone,
+      email: req.body.email,
+      deliveryLocation: req.body.deliveryLocation,
       title: req.body.title,
       country: req.body.country,
       quantity: req.body.quantity,
@@ -134,6 +159,10 @@ app.put("/requests/:id", authMiddleware, adminOnly, async (req, res) => {
     const updatedRequest = await Request.findByIdAndUpdate(
       req.params.id,
       {
+        customerName: req.body.customerName,
+        phone: req.body.phone,
+        email: req.body.email,
+        deliveryLocation: req.body.deliveryLocation,
         title: req.body.title,
         country: req.body.country,
         quantity: req.body.quantity,
