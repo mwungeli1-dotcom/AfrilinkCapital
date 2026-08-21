@@ -1,3 +1,5 @@
+import BuyerOnly from "@/components/BuyerOnly";
+
 type Product = {
   _id: string;
   name: string;
@@ -106,12 +108,12 @@ export default async function ProductDetailsPage({
         </div>
 
         <div className="flex flex-col sm:flex-row gap-3">
-          <a
+          <BuyerOnly><a
             href={`/post-request?product=${encodeURIComponent(product.name)}`}
             className="bg-blue-900 text-white px-6 py-3 rounded-xl font-semibold text-center hover:bg-yellow-400 hover:text-black transition"
           >
             Request Through Afrilink
-          </a>
+          </a></BuyerOnly>
 
           <a
             href={`https://wa.me/260777777079?text=${encodeURIComponent(
