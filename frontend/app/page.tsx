@@ -1,8 +1,8 @@
 "use client";
 
-import WhatsAppButton from "@/components/WhatsAppButton";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/src/lib/api";
 
 type Product = {
   _id: string;
@@ -16,45 +16,25 @@ type Product = {
 };
 
 export default function Home() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
   const [products, setProducts] = useState<Product[]>([]);
+  const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-
-    setIsLoggedIn(!!token);
-
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        setIsAdmin(user?.role === "admin");
-      } catch {
-        setIsAdmin(false);
-      }
-    }
-
     async function fetchProducts() {
       try {
-        const res = await fetch("https://afrilinkcapital.onrender.com/products");
-        const data = await res.json();
-
+        const data = await apiFetch("/products");
         setProducts((data.products || []).slice(0, 4));
       } catch (error) {
         console.error("Failed to fetch products:", error);
+        setProductsError(true);
+      } finally {
+        setProductsLoading(false);
       }
     }
 
     fetchProducts();
   }, []);
-
-  function logout() {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    window.location.reload();
-  }
 
   return (
     <main className="min-h-screen bg-blue-950 text-white">
@@ -104,14 +84,36 @@ export default function Home() {
           delivery.
         </p>
 
-        {products.length === 0 ? (
+        {productsLoading ? (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4" aria-label="Loading featured products">
+            {[0, 1, 2, 3].map((item) => (
+              <div key={item} className="h-80 animate-pulse rounded-xl bg-white shadow" />
+            ))}
+          </div>
+        ) : productsError ? (
           <div className="bg-white p-8 rounded-2xl shadow text-center max-w-2xl mx-auto">
             <h3 className="text-2xl font-bold text-blue-900">
-              No Products Added Yet
+              Products are temporarily unavailable
             </h3>
             <p className="text-gray-600 mt-2">
-              Add products from the admin product page to display them here.
+              Please browse the showroom again shortly or request a quotation directly.
             </p>
+            <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+              Request a Quotation
+            </Link>
+          </div>
+        ) : products.length === 0 ? (
+          <div className="bg-white p-8 rounded-2xl shadow text-center max-w-2xl mx-auto">
+            <h3 className="text-2xl font-bold text-blue-900">
+              Tell us what your business needs
+            </h3>
+            <p className="text-gray-600 mt-2">
+              Our catalogue is being updated. Afrilink Capital can still source
+              machinery, equipment and commercial products for you.
+            </p>
+            <Link href="/post-request" className="inline-block mt-5 bg-blue-950 text-white px-6 py-3 rounded-xl">
+              Request a Quotation
+            </Link>
           </div>
         ) : (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -270,7 +272,84 @@ export default function Home() {
         </div>
       </section>
 
-      <WhatsAppButton />
+      <section className="bg-blue-950 px-6 py-20 text-white">
+        <div className="mx-auto max-w-6xl">
+          <div className="mx-auto max-w-3xl text-center">
+            <p className="font-semibold uppercase tracking-[0.2em] text-yellow-400">
+              A clear procurement process
+            </p>
+            <h3 className="mt-3 text-3xl font-extrabold md:text-4xl">
+              From your request to final delivery
+            </h3>
+            <p className="mt-4 text-lg text-blue-100">
+              Afrilink Capital remains your single point of contact while we
+              coordinate sourcing, quotation, importation and delivery.
+            </p>
+          </div>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {[
+              ["01", "Tell us what you need", "Submit the product, quantity, destination and any specifications you already have."],
+              ["02", "Receive an Afrilink quotation", "We review sourcing options and issue one clear quotation through Afrilink Capital."],
+              ["03", "Track sourcing and delivery", "We coordinate the approved order and keep you informed through the delivery process."],
+            ].map(([number, title, description]) => (
+              <div key={number} className="rounded-2xl border border-blue-800 bg-blue-900/40 p-7">
+                <span className="text-3xl font-black text-yellow-400">{number}</span>
+                <h4 className="mt-5 text-xl font-bold">{title}</h4>
+                <p className="mt-3 leading-relaxed text-blue-100">{description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-white px-6 py-20 text-black">
+        <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[1.1fr_1fr] lg:items-center">
+          <div>
+            <p className="font-semibold uppercase tracking-[0.2em] text-blue-700">
+              Why businesses choose Afrilink
+            </p>
+            <h3 className="mt-3 text-3xl font-extrabold text-blue-950 md:text-4xl">
+              One trusted partner between your business and global suppliers
+            </h3>
+            <p className="mt-5 text-lg leading-relaxed text-gray-600">
+              You do not need to spend weeks searching unknown manufacturers or
+              coordinating separate shipping and clearance providers.
+            </p>
+          </div>
+
+          <div className="grid gap-4">
+            {[
+              "Supplier options reviewed before quotation",
+              "Supplier contacts and negotiations managed by Afrilink",
+              "Clear delivery expectations before order approval",
+              "Direct support through WhatsApp and the customer platform",
+            ].map((item) => (
+              <div key={item} className="flex gap-3 rounded-xl border border-gray-200 p-4 shadow-sm">
+                <span aria-hidden="true" className="font-bold text-green-600">✓</span>
+                <p className="font-medium text-gray-700">{item}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="bg-yellow-400 px-6 py-16 text-center text-blue-950">
+        <h3 className="text-3xl font-extrabold md:text-4xl">
+          Ready to source your next product?
+        </h3>
+        <p className="mx-auto mt-4 max-w-2xl text-lg">
+          Send your requirements and let Afrilink Capital prepare the sourcing
+          and delivery plan.
+        </p>
+        <Link
+          href="/post-request"
+          className="mt-8 inline-block rounded-xl bg-blue-950 px-8 py-4 font-bold text-white transition hover:bg-blue-900"
+        >
+          Request a Quotation
+        </Link>
+      </section>
+
     </main>
   );
 }

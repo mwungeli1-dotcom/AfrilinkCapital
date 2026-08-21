@@ -22,6 +22,8 @@ export default function PostRequestPage() {
     const productName = params.get("product");
 
     if (productName) {
+      // This effect synchronizes the form with a product selected on another page.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitle(productName);
       setDescription(
         `I am interested in importing ${productName} through Afrilink Capital.`
@@ -29,7 +31,8 @@ export default function PostRequestPage() {
     }
   }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  event.preventDefault();
   if (!title || !description || !quantity || !country) {
     toast.error("Please fill in all fields");
     return;
@@ -84,12 +87,15 @@ export default function PostRequestPage() {
           negotiation, shipping, customs clearance, and delivery.
         </p>
 
-        <form className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <div>
-            <label className="block mb-2 font-semibold">Product Title</label>
+            <label htmlFor="request-title" className="block mb-2 font-semibold">Product Title</label>
 
             <input
               type="text"
+              id="request-title"
+              name="title"
+              required
               placeholder="Example: 500LPH RO Water Machine"
               className="w-full border border-gray-300 rounded-xl p-4"
               value={title}
@@ -98,11 +104,14 @@ export default function PostRequestPage() {
           </div>
 
           <div>
-            <label className="block mb-2 font-semibold">
+            <label htmlFor="request-description" className="block mb-2 font-semibold">
               Product Description
             </label>
 
             <textarea
+              id="request-description"
+              name="description"
+              required
               placeholder="Describe the product or machine you need..."
               className="w-full border border-gray-300 rounded-xl p-4 h-40"
               value={description}
@@ -112,10 +121,13 @@ export default function PostRequestPage() {
 
           <div className="grid md:grid-cols-2 gap-6">
             <div>
-              <label className="block mb-2 font-semibold">Quantity</label>
+              <label htmlFor="request-quantity" className="block mb-2 font-semibold">Quantity</label>
 
               <input
                 type="text"
+                id="request-quantity"
+                name="quantity"
+                required
                 placeholder="Example: 2 Machines"
                 className="w-full border border-gray-300 rounded-xl p-4"
                 value={quantity}
@@ -124,10 +136,14 @@ export default function PostRequestPage() {
             </div>
 
             <div>
-              <label className="block mb-2 font-semibold">Country</label>
+              <label htmlFor="request-country" className="block mb-2 font-semibold">Delivery Country</label>
 
               <input
                 type="text"
+                id="request-country"
+                name="country"
+                autoComplete="country-name"
+                required
                 placeholder="Example: Zambia"
                 className="w-full border border-gray-300 rounded-xl p-4"
                 value={country}
@@ -137,8 +153,7 @@ export default function PostRequestPage() {
           </div>
 
           <button
-            onClick={handleSubmit}
-            type="button"
+            type="submit"
             className="bg-blue-950 text-white px-8 py-4 rounded-xl hover:bg-yellow-400 hover:text-black transition duration-300"
           >
             Submit Request
