@@ -28,7 +28,7 @@ export default function EditProductPage() {
     const savedUser = localStorage.getItem("user");
 
     if (!token || !savedUser) {
-      toast.error("Admin login required");
+      toast.error("Please login first");
 
       setTimeout(() => {
         window.location.href = "/login";
@@ -39,8 +39,8 @@ export default function EditProductPage() {
 
     const user = JSON.parse(savedUser);
 
-    if (user.role !== "admin") {
-      toast.error("Admin access required");
+    if (!["admin", "super_admin", "supplier"].includes(user.role)) {
+      toast.error("Supplier or admin access required");
 
       setTimeout(() => {
         window.location.href = "/";
@@ -66,9 +66,9 @@ export default function EditProductPage() {
         setDescription(product.description || "");
         setImage(product.image || "");
         setVideo(product.video || "");
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(error);
-        toast.error(error.message || "Failed to load product");
+        toast.error(error instanceof Error ? error.message : "Failed to load product");
       } finally {
         setLoading(false);
       }
@@ -104,10 +104,10 @@ export default function EditProductPage() {
 
       setImage(data.secure_url);
       toast.success("Image uploaded successfully!");
-    } catch (error: any) {
+    } catch (error: unknown) {
   console.error(error);
 
-  if (error?.message) {
+  if (error instanceof Error) {
     toast.error(error.message);
   } else {
     toast.error("Failed to upload image");
@@ -125,7 +125,7 @@ export default function EditProductPage() {
       return;
     }
 
-    if (!name || !category || !price || !delivery || !origin) {
+    if (!name || !category || !price || !delivery || !origin || !description) {
       toast.error("Please fill in all important fields");
       return;
     }
@@ -152,9 +152,9 @@ export default function EditProductPage() {
       setTimeout(() => {
         window.location.href = "/admin/products";
       }, 800);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error(error);
-      toast.error(error.message || "Something went wrong");
+      toast.error(error instanceof Error ? error.message : "Something went wrong");
     } finally {
       setSaving(false);
     }
