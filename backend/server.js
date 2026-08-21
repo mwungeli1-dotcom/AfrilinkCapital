@@ -626,19 +626,55 @@ app.put("/quotations/:id/status", authMiddleware, adminOnly, async (req, res) =>
       return res.status(400).json({ success: false, message: "Invalid quotation status" });
     }
 
-    const quotation = await Quotation.findByIdAndUpdate(
-      req.params.id,
-      { status: req.body.status },
-      { new: true, runValidators: true }
-    );
+    const statusUpdate = { status: req.body.status };
+    if (req.body.status === "Accepted") statusUpdate.acceptedAt = new Date();
+    if (req.body.status === "Rejected") statusUpdate.rejectedAt = new Date();
+    const quotation = await Quotation.findByIdAndUpdate(req.params.id, statusUpdate, { new: true, runValidators: true });
     if (!quotation) return res.status(404).json({ success: false, message: "Quotation not found" });
 
     if (req.body.status === "Sent") {
       await Request.findByIdAndUpdate(quotation.requestId, { status: "Quotation Ready" });
+    } else if (req.body.status === "Accepted") {
+      await Request.findByIdAndUpdate(quotation.requestId, { status: "Awaiting Deposit" });
+    } else if (req.body.status === "Rejected") {
+      await Request.findByIdAndUpdate(quotation.requestId, { status: "Reviewing" });
     }
     res.json({ success: true, quotation });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update quotation", error: error.message });
+  }
+});
+
+app.put("/quotations/:id/payment", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const quotation = await Quotation.findById(req.params.id);
+    if (!quotation) return res.status(404).json({ success: false, message: "Quotation not found" });
+
+    const amountPaid = Number(req.body.amountPaid);
+    if (!Number.isFinite(amountPaid) || amountPaid < 0 || amountPaid > quotation.totalAmount) {
+      return res.status(400).json({ success: false, message: "Amount paid must be between zero and the quotation total" });
+    }
+
+    quotation.amountPaid = amountPaid;
+    quotation.paymentMethod = req.body.paymentMethod || "";
+    quotation.paymentReference = req.body.paymentReference || "";
+    quotation.paymentNotes = req.body.paymentNotes || "";
+    quotation.paymentStatus = amountPaid === 0 ? "Unpaid" : amountPaid >= quotation.totalAmount ? "Paid" : "Partially Paid";
+    quotation.paidAt = quotation.paymentStatus === "Paid" ? new Date() : undefined;
+    await quotation.save();
+
+    if (amountPaid > 0) {
+      await Request.findByIdAndUpdate(quotation.requestId, { status: "Ordered" });
+    }
+
+    res.json({
+      success: true,
+      message: "Payment record updated",
+      quotation,
+      balance: Math.max(quotation.totalAmount - quotation.amountPaid, 0),
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update payment", error: error.message });
   }
 });
 
