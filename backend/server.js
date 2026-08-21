@@ -528,6 +528,61 @@ app.post("/login", async (req, res) => {
     });
   }
 });
+
+// PROFILE
+app.get("/profile", authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findById(req.user.id).select("-password");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    res.json({ success: true, user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load profile", error: error.message });
+  }
+});
+
+app.put("/profile", authMiddleware, async (req, res) => {
+  try {
+    const name = String(req.body.name || "").trim();
+    if (!name) return res.status(400).json({ success: false, message: "Name is required" });
+
+    const user = await User.findByIdAndUpdate(
+      req.user.id,
+      {
+        name,
+        phone: String(req.body.phone || "").trim(),
+        country: String(req.body.country || "").trim(),
+        companyName: String(req.body.companyName || "").trim(),
+        avatar: String(req.body.avatar || "").trim(),
+      },
+      { new: true, runValidators: true }
+    ).select("-password");
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    res.json({ success: true, message: "Profile updated successfully", user });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update profile", error: error.message });
+  }
+});
+
+app.put("/profile/password", authMiddleware, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: "Current password and a new password of at least 8 characters are required" });
+    }
+
+    const user = await User.findById(req.user.id);
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+    const matches = await bcrypt.compare(currentPassword, user.password);
+    if (!matches) return res.status(400).json({ success: false, message: "Current password is incorrect" });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+    res.json({ success: true, message: "Password changed successfully" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to change password", error: error.message });
+  }
+});
 // SUPPLIER APPLICATIONS
 
 app.post("/supplier-applications", authMiddleware, async (req, res) => {
