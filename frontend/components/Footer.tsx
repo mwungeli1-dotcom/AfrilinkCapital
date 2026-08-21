@@ -1,4 +1,5 @@
 import Link from "next/link";
+import BuyerOnly from "./BuyerOnly";
 
 export default function Footer() {
   return (
@@ -38,9 +39,7 @@ export default function Footer() {
               Products
             </Link>
 
-            <Link href="/post-request" className="hover:text-yellow-400">
-              Request Quotation
-            </Link>
+            <BuyerOnly><Link href="/post-request" className="hover:text-yellow-400">Request Quotation</Link></BuyerOnly>
 
             <Link href="/contact" className="hover:text-yellow-400">
               Contact
