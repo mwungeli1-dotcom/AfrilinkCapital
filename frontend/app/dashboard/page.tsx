@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import Link from "next/link";
+import { apiFetch } from "@/src/lib/api";
 
 type DashboardUser = {
   name?: string;
@@ -10,9 +11,19 @@ type DashboardUser = {
   role?: "buyer" | "supplier" | "admin" | "super_admin";
 };
 
+type AdminOverview = {
+  requestCount: number;
+  activeOrders: number;
+  pendingSuppliers: number;
+  pendingProducts: number;
+  financials: Array<{ currency: string; quotations: number; quoted: number; collected: number; balance: number; grossProfit: number }>;
+  catalogueCommissions: Array<{ currency: string; commission: number }>;
+};
+
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<DashboardUser | null>(null);
+  const [overview, setOverview] = useState<AdminOverview | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -34,7 +45,13 @@ export default function DashboardPage() {
     const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser) as DashboardUser);
+      const currentUser = JSON.parse(savedUser) as DashboardUser;
+      setUser(currentUser);
+      if (["admin", "super_admin"].includes(currentUser.role || "")) {
+        apiFetch("/admin/overview")
+          .then((data) => setOverview(data.overview))
+          .catch((error) => console.error("Failed to load admin overview", error));
+      }
     }
   }, []);
 
@@ -185,11 +202,39 @@ export default function DashboardPage() {
           </>
         )}
 
-        {user?.role === "admin" && (
+        {["admin", "super_admin"].includes(user?.role || "") && (
           <>
             <h2 className="text-2xl font-bold text-blue-950 mb-4">
               Admin Trading Control Center
             </h2>
+
+            {overview && (
+              <section className="mb-8">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    ["Buyer requests", overview.requestCount],
+                    ["Active orders", overview.activeOrders],
+                    ["Supplier approvals", overview.pendingSuppliers],
+                    ["Product reviews", overview.pendingProducts],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-2xl border border-gray-200 bg-gray-50 p-5"><p className="text-sm font-semibold text-gray-600">{label}</p><p className="mt-2 text-3xl font-bold text-blue-950">{value}</p></div>
+                  ))}
+                </div>
+
+                {overview.financials.length > 0 && (
+                  <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                    {overview.financials.map((item) => (
+                      <div key={item.currency} className="rounded-2xl bg-blue-950 p-5 text-white">
+                        <div className="flex items-center justify-between"><h3 className="font-bold">{item.currency} Deal Pipeline</h3><span className="rounded-full bg-yellow-400 px-3 py-1 text-xs font-bold text-blue-950">{item.quotations} quotes</span></div>
+                        <div className="mt-4 grid grid-cols-2 gap-4 text-sm"><div><p className="text-blue-200">Quoted</p><p className="text-xl font-bold">{item.currency} {item.quoted.toLocaleString()}</p></div><div><p className="text-blue-200">Collected</p><p className="text-xl font-bold text-green-300">{item.currency} {item.collected.toLocaleString()}</p></div><div><p className="text-blue-200">Outstanding</p><p className="font-bold text-yellow-300">{item.currency} {item.balance.toLocaleString()}</p></div><div><p className="text-blue-200">Expected gross profit</p><p className="font-bold">{item.currency} {item.grossProfit.toLocaleString()}</p></div></div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {overview.catalogueCommissions.length > 0 && <p className="mt-4 rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-900"><strong>Approved catalogue commission opportunity:</strong> {overview.catalogueCommissions.map((item) => `${item.currency} ${item.commission.toLocaleString()}`).join(" · ")}</p>}
+              </section>
+            )}
 
             <div className="grid md:grid-cols-3 gap-6">
               <Link
@@ -216,15 +261,14 @@ export default function DashboardPage() {
                 </p>
               </Link>
 
-              <div className="bg-white border p-6 rounded-2xl shadow">
+              <Link href="/requests" className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition">
                 <h3 className="text-xl font-bold text-blue-950">
                   Create Afrilink Quotation
                 </h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  Coming soon: add factory price, shipping, duties, and Afrilink
-                  margin.
+                  Open a buyer request, add supplier cost, shipping, duties, and Afrilink margin.
                 </p>
-              </div>
+              </Link>
 
               <Link
                 href="/admin/products/create"
@@ -248,15 +292,14 @@ export default function DashboardPage() {
                 </p>
               </Link>
 
-              <div className="bg-white border p-6 rounded-2xl shadow">
+              <Link href="/requests" className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition">
                 <h3 className="text-xl font-bold text-blue-950">
                   Orders & Payments
                 </h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  Coming soon: track deposits, supplier payments, orders, and
-                  delivery.
+                  Track quotation acceptance, deposits, balances, orders, and delivery.
                 </p>
-              </div>
+              </Link>
             </div>
           </>
         )}
