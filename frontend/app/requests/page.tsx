@@ -2,9 +2,14 @@
 
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
+import { apiFetch } from "@/src/lib/api";
 
 type RequestItem = {
   _id: string;
+  customerName?: string;
+  phone?: string;
+  email?: string;
+  deliveryLocation?: string;
   title: string;
   country: string;
   quantity: string;
@@ -32,8 +37,7 @@ export default function RequestsPage() {
 
     async function fetchRequests() {
       try {
-        const res = await fetch("http://afrilinkcapital.onrender.com/requests");
-        const data = await res.json();
+        const data = await apiFetch("/requests");
 
         console.log("REQUESTS DATA:", data);
 
@@ -49,7 +53,9 @@ export default function RequestsPage() {
   }, []);
 
   const filteredRequests = requests.filter((request) =>
-    request.title?.toLowerCase().includes(search.toLowerCase())
+    [request.title, request.customerName, request.phone, request.deliveryLocation]
+      .filter(Boolean)
+      .some((value) => value?.toLowerCase().includes(search.toLowerCase()))
   );
 
   if (loading) {
@@ -115,6 +121,16 @@ export default function RequestsPage() {
                   <p className="text-gray-600">
                     Quantity: {request.quantity}
                   </p>
+
+                  <p className="mt-2 font-semibold text-blue-900">
+                    Customer: {request.customerName || "Legacy request"}
+                  </p>
+
+                  {request.phone && (
+                    <a className="text-green-700 hover:underline" href={`tel:${request.phone}`}>
+                      {request.phone}
+                    </a>
+                  )}
                 </div>
 
                 <span className="bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold">
