@@ -24,20 +24,39 @@ export default function PostRequestPage() {
   const [quantity, setQuantity] = useState("");
   const [country, setCountry] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
+  const [supplierBlocked, setSupplierBlocked] = useState(false);
 
   useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    if (savedUser) {
+      try {
+        if (JSON.parse(savedUser)?.role === "supplier") {
+          // This blocks supplier accounts from entering the buyer quotation flow.
+          // eslint-disable-next-line react-hooks/set-state-in-effect
+          setSupplierBlocked(true);
+          toast.error("Supplier accounts cannot submit buyer quotation requests");
+          setTimeout(() => { window.location.href = "/dashboard"; }, 900);
+          return;
+        }
+      } catch {
+        // Ignore malformed local account data and continue as a visitor.
+      }
+    }
     const params = new URLSearchParams(window.location.search);
     const productName = params.get("product");
 
     if (productName) {
       // This effect synchronizes the form with a product selected on another page.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setTitle(productName);
       setDescription(
         `I am interested in importing ${productName} through Afrilink Capital.`
       );
     }
   }, []);
+
+  if (supplierBlocked) {
+    return <main className="min-h-screen bg-gray-100 p-8 text-center text-blue-950">Returning to your supplier dashboard...</main>;
+  }
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
   event.preventDefault();
