@@ -32,8 +32,15 @@ const ProductSchema = new mongoose.Schema(
       default: "",
     },
 
+    supplierPrice: { type: Number, min: 0 },
+
+    publicPrice: { type: Number, min: 0 },
+
+    markupPercent: { type: Number, default: 20, min: 0 },
+
     currency: {
       type: String,
+      enum: ["USD", "ZMW"],
       default: "USD",
     },
 

@@ -225,20 +225,31 @@ function supplierOrAdmin(req, res, next) {
   next();
 }
 
+function calculateProductPricing(rawPrice, rawCurrency) {
+  const supplierPrice = Number(rawPrice);
+  if (!Number.isFinite(supplierPrice) || supplierPrice <= 0) return null;
+  const currency = ["USD", "ZMW"].includes(rawCurrency) ? rawCurrency : "USD";
+  const markupPercent = 20;
+  const publicPrice = Math.round(supplierPrice * (1 + markupPercent / 100) * 100) / 100;
+  const price = `${currency} ${publicPrice.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return { supplierPrice, publicPrice, markupPercent, currency, price };
+}
+
 app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
-    const requiredFields = ["name", "category", "description", "price", "origin", "delivery"];
+    const requiredFields = ["name", "category", "description", "supplierPrice", "origin", "delivery"];
     const missingFields = requiredFields.filter((field) => !String(req.body[field] || "").trim());
     if (missingFields.length) {
       return res.status(400).json({ success: false, message: "Complete all required product details", missingFields });
     }
+    const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency);
+    if (!pricing) return res.status(400).json({ success: false, message: "Enter a valid supplier price greater than zero" });
     const isAdmin = ["admin", "super_admin"].includes(req.user.role);
     const product = await Product.create({
       name: req.body.name,
       category: req.body.category,
       description: req.body.description,
-      price: req.body.price,
-      currency: req.body.currency || "USD",
+      ...pricing,
       origin: req.body.origin,
       delivery: req.body.delivery,
       image: req.body.image,
@@ -267,7 +278,7 @@ app.get("/products", async (req, res) => {
     const products = await Product.find({
       isActive: { $ne: false },
       $or: [{ status: "Approved" }, { status: { $exists: false } }],
-    }).sort({ createdAt: -1 });
+    }).select("-supplierId -supplierPrice -markupPercent").sort({ createdAt: -1 });
     res.json({ success: true, products });
   } catch (error) {
     res.status(500).json({
@@ -296,9 +307,27 @@ app.get("/admin/products", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-app.get("/products/:id", async (req, res) => {
+app.get("/manage/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
     const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    if (!isAdmin && product.supplierId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "You can only manage your own products" });
+    }
+    res.json({ success: true, product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch product", error: error.message });
+  }
+});
+
+app.get("/products/:id", async (req, res) => {
+  try {
+    const product = await Product.findOne({
+      _id: req.params.id,
+      isActive: { $ne: false },
+      $or: [{ status: "Approved" }, { status: { $exists: false } }],
+    }).select("-supplierId -supplierPrice -markupPercent");
 
     if (!product) {
       return res.status(404).json({
@@ -326,18 +355,20 @@ app.put("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
       return res.status(403).json({ success: false, message: "You can only edit your own products" });
     }
 
+    const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency || product.currency);
+    if (!pricing) return res.status(400).json({ success: false, message: "Enter a valid supplier price greater than zero" });
+
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       {
         name: req.body.name,
         category: req.body.category,
-        price: req.body.price,
+        ...pricing,
         delivery: req.body.delivery,
         origin: req.body.origin,
         description: req.body.description,
         image: req.body.image,
         video: req.body.video,
-        currency: req.body.currency || product.currency,
         status: isAdmin ? (req.body.status || product.status) : "Pending",
         rejectionReason: isAdmin ? (req.body.rejectionReason || "") : "",
       },

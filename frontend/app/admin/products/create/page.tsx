@@ -8,7 +8,8 @@ import toast from "react-hot-toast";
 export default function CreateProductPage() {
   const [name, setName] = useState("");
   const [category, setCategory] = useState("");
-  const [price, setPrice] = useState("");
+  const [supplierPrice, setSupplierPrice] = useState("");
+  const [currency, setCurrency] = useState<"USD" | "ZMW">("USD");
   const [delivery, setDelivery] = useState("");
   const [origin, setOrigin] = useState("");
   const [description, setDescription] = useState("");
@@ -101,7 +102,7 @@ export default function CreateProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!name || !category || !price || !delivery || !origin || !description) {
+    if (!name || !category || !supplierPrice || Number(supplierPrice) <= 0 || !delivery || !origin || !description) {
       toast.error("Please fill in all important fields");
       return;
     }
@@ -119,7 +120,8 @@ export default function CreateProductPage() {
         body: JSON.stringify({
           name,
           category,
-          price,
+          supplierPrice: Number(supplierPrice),
+          currency,
           delivery,
           origin,
           description,
@@ -137,7 +139,7 @@ export default function CreateProductPage() {
 
       setName("");
       setCategory("");
-      setPrice("");
+      setSupplierPrice("");
       setDelivery("");
       setOrigin("");
       setDescription("");
@@ -187,12 +189,19 @@ export default function CreateProductPage() {
             onChange={(e) => setCategory(e.target.value)}
           />
 
-          <input
-            className="w-full border p-4 rounded-xl"
-            placeholder="Price e.g. From $2,500"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-          />
+          <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
+            <p className="mb-3 font-semibold text-blue-950">Pricing</p>
+            <div className="grid gap-3 md:grid-cols-[140px_1fr]">
+              <select className="rounded-xl border bg-white p-3" value={currency} onChange={(e) => setCurrency(e.target.value as "USD" | "ZMW")}><option value="USD">USD</option><option value="ZMW">ZMW</option></select>
+              <input type="number" min="0.01" step="0.01" required className="w-full rounded-xl border bg-white p-3" placeholder="Supplier / factory price" value={supplierPrice} onChange={(e) => setSupplierPrice(e.target.value)} />
+            </div>
+            <div className="mt-3 grid gap-2 text-sm md:grid-cols-3">
+              <p>Supplier price: <strong>{currency} {(Number(supplierPrice) || 0).toLocaleString()}</strong></p>
+              <p>Afrilink commission (20%): <strong>{currency} {((Number(supplierPrice) || 0) * 0.2).toLocaleString()}</strong></p>
+              <p>Buyer price: <strong className="text-green-700">{currency} {((Number(supplierPrice) || 0) * 1.2).toLocaleString()}</strong></p>
+            </div>
+            <p className="mt-2 text-xs text-gray-600">Buyers see only the final buyer price. Your base price remains private.</p>
+          </div>
 
           <input
             className="w-full border p-4 rounded-xl"
