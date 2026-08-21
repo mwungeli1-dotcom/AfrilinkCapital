@@ -17,8 +17,20 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Afrilink Capital",
-  description: "Connecting Africa with Global Suppliers",
+  metadataBase: new URL("https://www.afrilinkcapital.com"),
+  title: {
+    default: "Afrilink Capital | Source, Import & Deliver",
+    template: "%s | Afrilink Capital",
+  },
+  description:
+    "Afrilink Capital helps African businesses source products, verify suppliers, negotiate prices, manage imports and receive deliveries.",
+  openGraph: {
+    title: "Afrilink Capital",
+    description: "Your African sourcing, importation and delivery partner.",
+    url: "https://www.afrilinkcapital.com",
+    siteName: "Afrilink Capital",
+    type: "website",
+  },
 };
 
 export default function RootLayout({
