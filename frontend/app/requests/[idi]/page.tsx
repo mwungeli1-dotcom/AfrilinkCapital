@@ -1,9 +1,23 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { apiFetch } from "@/src/lib/api";
+
+type RequestItem = {
+  title: string;
+  customerName?: string;
+  phone?: string;
+  email?: string;
+  deliveryLocation?: string;
+  country?: string;
+  quantity?: string;
+  description?: string;
+  status?: string;
+  createdAt?: string;
+};
 
 export default function RequestDetails() {
-  const [request, setRequest] = useState<any>(null);
+  const [request, setRequest] = useState<RequestItem | null>(null);
   const [error, setError] = useState("");
 
   const id =
@@ -16,8 +30,7 @@ export default function RequestDetails() {
 
     async function fetchRequest() {
       try {
-        const res = await fetch(`http://afrilinkcapital.onrender.com/requests/${id}`);
-        const data = await res.json();
+        const data = await apiFetch(`/requests/${id}`);
 
         console.log("DETAIL DATA:", data);
 
@@ -73,6 +86,22 @@ export default function RequestDetails() {
         <span className="inline-block bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full text-sm font-semibold mb-6">
           {currentStatus}
         </span>
+
+        <div className="mb-8 rounded-2xl border border-blue-100 bg-blue-50 p-5">
+          <h2 className="text-xl font-bold text-blue-950">Customer Contact</h2>
+          <div className="mt-4 grid gap-4 md:grid-cols-2">
+            <div><strong>Name</strong><p>{request.customerName || "Legacy request"}</p></div>
+            <div><strong>Delivery Area</strong><p>{request.deliveryLocation || "Not provided"}</p></div>
+            <div>
+              <strong>Phone / WhatsApp</strong>
+              <p>{request.phone ? <a className="text-green-700 hover:underline" href={`tel:${request.phone}`}>{request.phone}</a> : "Not provided"}</p>
+            </div>
+            <div>
+              <strong>Email</strong>
+              <p>{request.email ? <a className="text-blue-700 hover:underline" href={`mailto:${request.email}`}>{request.email}</a> : "Not provided"}</p>
+            </div>
+          </div>
+        </div>
 
         <div className="grid gap-4 md:grid-cols-3 mb-8">
           <div className="bg-gray-100 p-4 rounded-xl">
