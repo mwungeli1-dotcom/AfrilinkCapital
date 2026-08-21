@@ -10,6 +10,7 @@ const Request = require("./models/Request");
 const User = require("./models/User");
 const Quotation = require("./models/Quotation");
 const Product = require("./models/Product");
+const SupplierRfq = require("./models/SupplierRfq");
 
 const app = express();
 
@@ -887,6 +888,85 @@ app.put("/supplier-applications/:id/reject", authMiddleware, adminOnly, async (r
       message: "Failed to reject supplier application",
       error: error.message,
     });
+  }
+});
+
+// PRIVATE SUPPLIER SOURCING
+app.post("/supplier-rfqs", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const { requestId, supplierId, message, deadline } = req.body;
+    const [request, supplier] = await Promise.all([
+      Request.findById(requestId),
+      User.findOne({ _id: supplierId, role: "supplier" }),
+    ]);
+    if (!request || !supplier) {
+      return res.status(400).json({ success: false, message: "Choose a valid request and approved supplier" });
+    }
+
+    const rfq = await SupplierRfq.create({ requestId, supplierId, sentBy: req.user.id, message, deadline });
+    if (["Received", "Reviewing"].includes(request.status)) {
+      request.status = "Sourcing Supplier";
+      await request.save();
+    }
+    res.json({ success: true, message: "Private price request sent to supplier", rfq });
+  } catch (error) {
+    const duplicate = error.code === 11000;
+    res.status(duplicate ? 409 : 500).json({
+      success: false,
+      message: duplicate ? "This supplier already received this request" : "Failed to send supplier request",
+      error: error.message,
+    });
+  }
+});
+
+app.get("/admin/requests/:id/supplier-rfqs", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const rfqs = await SupplierRfq.find({ requestId: req.params.id })
+      .populate("supplierId", "name email companyName")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, rfqs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch supplier offers", error: error.message });
+  }
+});
+
+app.get("/supplier/rfqs", authMiddleware, supplierOrAdmin, async (req, res) => {
+  try {
+    const query = ["admin", "super_admin"].includes(req.user.role) ? {} : { supplierId: req.user.id };
+    const rfqs = await SupplierRfq.find(query)
+      .populate("requestId", "title description quantity country deliveryLocation status createdAt")
+      .sort({ createdAt: -1 });
+    res.json({ success: true, rfqs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch factory price requests", error: error.message });
+  }
+});
+
+app.put("/supplier/rfqs/:id/respond", authMiddleware, supplierOrAdmin, async (req, res) => {
+  try {
+    const rfq = await SupplierRfq.findById(req.params.id);
+    const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    if (!rfq || (!isAdmin && rfq.supplierId.toString() !== req.user.id)) {
+      return res.status(404).json({ success: false, message: "Price request not found" });
+    }
+    const unitPrice = Number(req.body.unitPrice);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0 || !["USD", "ZMW"].includes(req.body.currency) || !String(req.body.leadTime || "").trim()) {
+      return res.status(400).json({ success: false, message: "Enter a valid price, currency, and lead time" });
+    }
+    Object.assign(rfq, {
+      currency: req.body.currency,
+      unitPrice,
+      minimumOrderQuantity: req.body.minimumOrderQuantity,
+      leadTime: req.body.leadTime,
+      shippingTerms: req.body.shippingTerms,
+      notes: req.body.notes,
+      status: "Responded",
+      respondedAt: new Date(),
+    });
+    await rfq.save();
+    res.json({ success: true, message: "Confidential factory offer submitted to Afrilink", rfq });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to submit supplier offer", error: error.message });
   }
 });
 // QUOTATIONS

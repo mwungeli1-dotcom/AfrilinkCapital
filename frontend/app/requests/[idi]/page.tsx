@@ -28,11 +28,17 @@ type DealQuotation = PdfQuotation & {
   paymentReference?: string;
 };
 
+type Supplier = { _id: string; companyName: string; country: string; userId?: { _id: string; name: string; email: string } };
+type SupplierRfq = { _id: string; status: string; currency?: string; unitPrice?: number; minimumOrderQuantity?: string; leadTime?: string; shippingTerms?: string; notes?: string; supplierId?: { name: string; email: string; companyName?: string }; createdAt: string };
+
 export default function RequestDetails() {
   const [request, setRequest] = useState<RequestItem | null>(null);
   const [quotations, setQuotations] = useState<DealQuotation[]>([]);
   const [paymentDrafts, setPaymentDrafts] = useState<Record<string, { amount: string; method: string; reference: string }>>({});
   const [updatingId, setUpdatingId] = useState("");
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
+  const [supplierRfqs, setSupplierRfqs] = useState<SupplierRfq[]>([]);
+  const [rfqDraft, setRfqDraft] = useState({ supplierId: "", message: "Please provide your best factory price and delivery terms.", deadline: "" });
   const [error, setError] = useState("");
   const { idi: id } = useParams<{ idi: string }>();
 
@@ -41,9 +47,11 @@ export default function RequestDetails() {
 
     async function fetchRequest() {
       try {
-        const [data, quotationData] = await Promise.all([
+        const [data, quotationData, supplierData, rfqData] = await Promise.all([
           apiFetch(`/requests/${id}`),
           apiFetch(`/requests/${id}/quotations`),
+          apiFetch("/supplier-applications"),
+          apiFetch(`/admin/requests/${id}/supplier-rfqs`),
         ]);
 
         console.log("DETAIL DATA:", data);
@@ -56,6 +64,8 @@ export default function RequestDetails() {
           setError("Request data not found");
         }
         setQuotations(quotationData.quotations || []);
+        setSuppliers((supplierData.applications || []).filter((supplier: Supplier & { status: string }) => supplier.status === "Approved" && supplier.userId?._id));
+        setSupplierRfqs(rfqData.rfqs || []);
       } catch (err) {
         console.error(err);
         setError("Failed to load request details");
@@ -110,6 +120,21 @@ export default function RequestDetails() {
     } finally {
       setUpdatingId("");
     }
+  }
+
+  async function sendSupplierRfq() {
+    if (!rfqDraft.supplierId) return toast.error("Choose an approved supplier");
+    setUpdatingId("supplier-rfq");
+    try {
+      const data = await apiFetch("/supplier-rfqs", { method: "POST", body: JSON.stringify({ ...rfqDraft, requestId: id }) });
+      toast.success(data.message);
+      const refreshed = await apiFetch(`/admin/requests/${id}/supplier-rfqs`);
+      setSupplierRfqs(refreshed.rfqs || []);
+      setRfqDraft((current) => ({ ...current, supplierId: "" }));
+      setRequest((current) => current ? { ...current, status: "Sourcing Supplier" } : current);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Failed to contact supplier");
+    } finally { setUpdatingId(""); }
   }
 
   return (
@@ -189,6 +214,18 @@ export default function RequestDetails() {
         <p className="text-gray-700 mb-8">
           {request.description || "No description provided"}
         </p>
+
+        <section className="mb-8 rounded-2xl border border-yellow-200 bg-yellow-50 p-5">
+          <h2 className="text-xl font-bold text-blue-950">Private Supplier Sourcing</h2>
+          <p className="mt-1 text-sm text-gray-700">Send this requirement privately to approved suppliers. Their factory offers remain hidden from the buyer.</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-[1.2fr_1.5fr_0.8fr_auto]">
+            <select className="rounded-lg border bg-white p-3" value={rfqDraft.supplierId} onChange={(e) => setRfqDraft({ ...rfqDraft, supplierId: e.target.value })}><option value="">Choose supplier</option>{suppliers.map((supplier) => <option key={supplier._id} value={supplier.userId?._id}>{supplier.companyName} — {supplier.country}</option>)}</select>
+            <input className="rounded-lg border p-3" value={rfqDraft.message} onChange={(e) => setRfqDraft({ ...rfqDraft, message: e.target.value })} />
+            <input type="date" className="rounded-lg border p-3" value={rfqDraft.deadline} onChange={(e) => setRfqDraft({ ...rfqDraft, deadline: e.target.value })} />
+            <button disabled={updatingId === "supplier-rfq"} onClick={sendSupplierRfq} className="rounded-lg bg-blue-950 px-4 py-3 font-bold text-white disabled:opacity-50">Send RFQ</button>
+          </div>
+          {supplierRfqs.length > 0 && <div className="mt-5 space-y-3">{supplierRfqs.map((rfq) => <div key={rfq._id} className="rounded-xl border bg-white p-4"><div className="flex flex-wrap justify-between gap-3"><div><p className="font-bold text-blue-950">{rfq.supplierId?.companyName || rfq.supplierId?.name}</p><p className="text-sm text-gray-500">{rfq.supplierId?.email}</p></div><span className="h-fit rounded-full bg-yellow-100 px-3 py-1 text-sm font-bold text-yellow-800">{rfq.status}</span></div>{rfq.status === "Responded" && <div className="mt-3 grid gap-2 text-sm sm:grid-cols-4"><p><strong>Factory price:</strong><br />{rfq.currency} {rfq.unitPrice?.toLocaleString()}</p><p><strong>MOQ:</strong><br />{rfq.minimumOrderQuantity || "—"}</p><p><strong>Lead time:</strong><br />{rfq.leadTime}</p><p><strong>Terms:</strong><br />{rfq.shippingTerms || "—"}</p>{rfq.notes && <p className="sm:col-span-4"><strong>Notes:</strong> {rfq.notes}</p>}</div>}</div>)}</div>}
+        </section>
 
         <section className="mb-8 rounded-2xl border border-gray-200 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">

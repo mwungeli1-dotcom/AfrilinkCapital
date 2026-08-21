@@ -190,14 +190,14 @@ export default function DashboardPage() {
                 </p>
               </Link>
 
-              <div className="bg-white border p-6 rounded-2xl shadow">
+              <Link href="/supplier/price-requests" className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition">
                 <h3 className="text-xl font-bold text-blue-950">
                   Factory Price Requests
                 </h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  Coming soon: Afrilink will request supplier pricing privately.
+                  Review private sourcing requests and submit factory offers.
                 </p>
-              </div>
+              </Link>
             </div>
           </>
         )}
