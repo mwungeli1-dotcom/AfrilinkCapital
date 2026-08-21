@@ -414,9 +414,23 @@ app.delete("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) =>
 
 // AUTH
 app.post("/register", async (req, res) => {
+  let createdUser = null;
   try {
-    const { name, email, password } = req.body;
+    const { name, password, accountType = "buyer" } = req.body;
+    const email = String(req.body.email || "").trim().toLowerCase();
     const role = "buyer";
+
+    if (!name || !email || !password || password.length < 6) {
+      return res.status(400).json({ success: false, message: "Name, email, and a password of at least 6 characters are required" });
+    }
+
+    if (accountType === "supplier") {
+      const supplierFields = ["companyName", "country", "contactPerson", "phone", "businessRegistration", "description"];
+      const missingFields = supplierFields.filter((field) => !String(req.body[field] || "").trim());
+      if (missingFields.length) {
+        return res.status(400).json({ success: false, message: "Complete all required supplier application details", missingFields });
+      }
+    }
 
     const existingUser = await User.findOne({ email });
 
@@ -429,19 +443,36 @@ app.post("/register", async (req, res) => {
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const user = await User.create({
+    createdUser = await User.create({
       name,
       email,
       password: hashedPassword,
       role,
     });
 
+    if (accountType === "supplier") {
+      await SupplierApplication.create({
+        userId: createdUser._id,
+        companyName: req.body.companyName,
+        country: req.body.country,
+        contactPerson: req.body.contactPerson,
+        phone: req.body.phone,
+        website: req.body.website,
+        businessRegistration: req.body.businessRegistration,
+        productCategories: Array.isArray(req.body.productCategories) ? req.body.productCategories : [],
+        description: req.body.description,
+        status: "Pending",
+      });
+    }
+
     res.json({
       success: true,
-      message: "User registered successfully",
-      user: removePassword(user),
+      message: accountType === "supplier" ? "Account created and supplier application submitted for review" : "User registered successfully",
+      applicationStatus: accountType === "supplier" ? "Pending" : undefined,
+      user: removePassword(createdUser),
     });
   } catch (error) {
+    if (createdUser?._id) await User.findByIdAndDelete(createdUser._id).catch(() => {});
     res.status(500).json({
       success: false,
       message: "Registration failed",

@@ -4,9 +4,15 @@ import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import Link from "next/link";
 
+type DashboardUser = {
+  name?: string;
+  email?: string;
+  role?: "buyer" | "supplier" | "admin" | "super_admin";
+};
+
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<DashboardUser | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -21,12 +27,14 @@ export default function DashboardPage() {
       return;
     }
 
+    // This effect synchronizes the dashboard with the persisted browser session.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setToken(savedToken);
 
     const savedUser = localStorage.getItem("user");
 
     if (savedUser) {
-      setUser(JSON.parse(savedUser));
+      setUser(JSON.parse(savedUser) as DashboardUser);
     }
   }, []);
 
@@ -122,6 +130,14 @@ export default function DashboardPage() {
                 <p className="mt-2 text-sm text-gray-600">
                   Track your requests and official Afrilink quotations.
                 </p>
+              </Link>
+
+              <Link
+                href="/become-supplier"
+                className="bg-yellow-50 border border-yellow-200 p-6 rounded-2xl shadow hover:shadow-lg transition"
+              >
+                <h3 className="text-xl font-bold text-blue-950">Become a Supplier</h3>
+                <p className="mt-2 text-sm text-gray-600">Submit your company for Afrilink verification and unlock product listing after approval.</p>
               </Link>
             </div>
           </>
