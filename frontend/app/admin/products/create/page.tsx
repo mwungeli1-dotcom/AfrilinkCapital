@@ -1,7 +1,7 @@
 "use client";
 
 import { apiFetch } from "@/src/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 
@@ -17,6 +17,14 @@ export default function CreateProductPage() {
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isSupplier, setIsSupplier] = useState(false);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("user");
+    // This synchronizes role-specific labels with the authenticated browser session.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setIsSupplier(savedUser ? JSON.parse(savedUser).role === "supplier" : false);
+  }, []);
 
   async function uploadToCloudinary(file: File, type: "image" | "video") {
     const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;
@@ -93,7 +101,7 @@ export default function CreateProductPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    if (!name || !category || !price || !delivery || !origin) {
+    if (!name || !category || !price || !delivery || !origin || !description) {
       toast.error("Please fill in all important fields");
       return;
     }
@@ -125,7 +133,7 @@ export default function CreateProductPage() {
         return;
       }
 
-      toast.success("Product created successfully!");
+      toast.success(isSupplier ? "Product submitted for Afrilink review!" : "Product created successfully!");
 
       setName("");
       setCategory("");
@@ -157,12 +165,11 @@ export default function CreateProductPage() {
         </div>
 
         <h1 className="text-4xl font-bold text-blue-900 mb-2">
-          Add New Product
+          {isSupplier ? "Submit New Product" : "Add New Product"}
         </h1>
 
         <p className="text-gray-600 mb-8">
-          Add products to Afrilink Hub showroom. Supplier details remain hidden
-          from customers.
+          {isSupplier ? "List your product for Afrilink review. Your company contact details remain hidden from buyers." : "Add products to Afrilink Hub showroom. Supplier details remain hidden from customers."}
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -257,7 +264,7 @@ export default function CreateProductPage() {
             disabled={saving || uploadingImage || uploadingVideo}
             className="bg-blue-900 hover:bg-blue-800 text-white px-6 py-3 rounded-xl disabled:bg-gray-400"
           >
-            {saving ? "Saving Product..." : "Save Product"}
+            {saving ? "Saving Product..." : isSupplier ? "Submit for Review" : "Publish Product"}
           </button>
         </form>
       </div>
