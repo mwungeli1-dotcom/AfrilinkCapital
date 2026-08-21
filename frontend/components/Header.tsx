@@ -5,6 +5,8 @@ import { useEffect, useState } from "react";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profile, setProfile] = useState<{ name: string; avatar?: string }>({ name: "Account" });
   const [{ isLoggedIn, isAdmin, role }, setAuthState] = useState({
     isLoggedIn: false,
     isAdmin: false,
@@ -12,24 +14,32 @@ export default function Header() {
   });
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const savedUser = localStorage.getItem("user");
-    let savedUserIsAdmin = false;
-    let savedRole = "";
+    function syncAccount() {
+      const token = localStorage.getItem("token");
+      const savedUser = localStorage.getItem("user");
+      let savedUserIsAdmin = false;
+      let savedRole = "";
+      let savedProfile = { name: "Account", avatar: "" };
 
-    if (savedUser) {
-      try {
-        const user = JSON.parse(savedUser);
-        savedRole = user?.role || "";
-        savedUserIsAdmin = ["admin", "super_admin"].includes(savedRole);
-      } catch {
-        savedUserIsAdmin = false;
+      if (savedUser) {
+        try {
+          const user = JSON.parse(savedUser);
+          savedRole = user?.role || "";
+          savedUserIsAdmin = ["admin", "super_admin"].includes(savedRole);
+          savedProfile = { name: user?.name || "Account", avatar: user?.avatar || "" };
+        } catch {
+          savedUserIsAdmin = false;
+        }
       }
+
+      setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin, role: savedRole });
+      setProfile(savedProfile);
     }
 
     // This effect synchronizes navigation with the browser's persisted session.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin, role: savedRole });
+    syncAccount();
+    window.addEventListener("profile-updated", syncAccount);
+    return () => window.removeEventListener("profile-updated", syncAccount);
   }, []);
 
   function logout() {
@@ -103,9 +113,21 @@ export default function Header() {
               </>
             )}
 
-            <button onClick={logout} className="hover:text-yellow-400">
-              Logout
-            </button>
+            <div className="relative">
+              <button type="button" onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-blue-700 bg-blue-900 py-1 pl-1 pr-3 hover:border-yellow-400" aria-expanded={profileOpen}>
+                <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-yellow-400 font-bold text-blue-950">
+                  {profile.avatar ? <span role="img" aria-label={`${profile.name} profile picture`} className="h-full w-full bg-cover bg-center" style={{ backgroundImage: `url(${profile.avatar})` }} /> : profile.name.charAt(0).toUpperCase()}
+                </span>
+                <span className="max-w-28 truncate text-sm font-semibold">{profile.name}</span>
+              </button>
+              {profileOpen && (
+                <div className="right-0 mt-2 w-52 rounded-xl border border-gray-200 bg-white p-2 text-gray-800 shadow-xl md:absolute">
+                  <Link href="/profile" onClick={() => { setProfileOpen(false); setMenuOpen(false); }} className="block rounded-lg px-4 py-3 hover:bg-gray-100">My Profile</Link>
+                  <Link href="/dashboard" onClick={() => { setProfileOpen(false); setMenuOpen(false); }} className="block rounded-lg px-4 py-3 hover:bg-gray-100">Dashboard</Link>
+                  <button onClick={logout} className="w-full rounded-lg px-4 py-3 text-left text-red-700 hover:bg-red-50">Logout</button>
+                </div>
+              )}
+            </div>
           </>
         ) : (
           <>

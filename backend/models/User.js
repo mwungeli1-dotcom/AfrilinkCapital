@@ -32,6 +32,11 @@ const userSchema = new mongoose.Schema(
       enum: ["none", "pending", "approved", "rejected"],
       default: "none",
     },
+
+    phone: { type: String, trim: true, default: "" },
+    country: { type: String, trim: true, default: "" },
+    companyName: { type: String, trim: true, default: "" },
+    avatar: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );
