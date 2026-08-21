@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const RequestSchema = new mongoose.Schema(
   {
+    userId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
+
     customerName: {
       type: String,
       trim: true,

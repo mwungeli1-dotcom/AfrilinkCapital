@@ -17,7 +17,7 @@ export type PdfQuotation = {
   freightCost: number;
   customsCost: number;
   serviceFee: number;
-  markupAmount: number;
+  markupAmount?: number;
   totalAmount: number;
   deliveryTime: string;
   validityDays: number;

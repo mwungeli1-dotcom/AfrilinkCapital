@@ -138,7 +138,7 @@ export default function DashboardPage() {
               </Link>
 
               <Link
-                href="/requests"
+                href="/my-requests"
                 className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition"
               >
                 <h3 className="text-xl font-bold text-blue-950">
