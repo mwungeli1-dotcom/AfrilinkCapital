@@ -49,7 +49,7 @@ function authMiddleware(req, res, next) {
 }
 
 function adminOnly(req, res, next) {
-  if (!req.user || req.user.role !== "admin") {
+  if (!req.user || !["admin", "super_admin"].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
       message: "Admin access required",
@@ -218,13 +218,39 @@ app.delete("/requests/:id", authMiddleware, adminOnly, async (req, res) => {
 });
 
 // PRODUCTS
-app.post("/products", authMiddleware, adminOnly, async (req, res) => {
+function supplierOrAdmin(req, res, next) {
+  if (!req.user || !["supplier", "admin", "super_admin"].includes(req.user.role)) {
+    return res.status(403).json({ success: false, message: "Approved supplier access required" });
+  }
+  next();
+}
+
+app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
-    const product = await Product.create(req.body);
+    const requiredFields = ["name", "category", "description", "price", "origin", "delivery"];
+    const missingFields = requiredFields.filter((field) => !String(req.body[field] || "").trim());
+    if (missingFields.length) {
+      return res.status(400).json({ success: false, message: "Complete all required product details", missingFields });
+    }
+    const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    const product = await Product.create({
+      name: req.body.name,
+      category: req.body.category,
+      description: req.body.description,
+      price: req.body.price,
+      currency: req.body.currency || "USD",
+      origin: req.body.origin,
+      delivery: req.body.delivery,
+      image: req.body.image,
+      video: req.body.video,
+      supplierId: req.user.id,
+      status: isAdmin ? "Approved" : "Pending",
+      isActive: true,
+    });
 
     res.json({
       success: true,
-      message: "Product created successfully",
+      message: isAdmin ? "Product published successfully" : "Product submitted for Afrilink review",
       product,
     });
   } catch (error) {
@@ -238,7 +264,10 @@ app.post("/products", authMiddleware, adminOnly, async (req, res) => {
 
 app.get("/products", async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
+    const products = await Product.find({
+      isActive: { $ne: false },
+      $or: [{ status: "Approved" }, { status: { $exists: false } }],
+    }).sort({ createdAt: -1 });
     res.json({ success: true, products });
   } catch (error) {
     res.status(500).json({
@@ -246,6 +275,24 @@ app.get("/products", async (req, res) => {
       message: "Failed to fetch products",
       error: error.message,
     });
+  }
+});
+
+app.get("/supplier/products", authMiddleware, supplierOrAdmin, async (req, res) => {
+  try {
+    const products = await Product.find({ supplierId: req.user.id }).sort({ createdAt: -1 });
+    res.json({ success: true, products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch supplier products", error: error.message });
+  }
+});
+
+app.get("/admin/products", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const products = await Product.find().populate("supplierId", "name email").sort({ createdAt: -1 });
+    res.json({ success: true, products });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch products", error: error.message });
   }
 });
 
@@ -270,8 +317,15 @@ app.get("/products/:id", async (req, res) => {
   }
 });
 
-app.put("/products/:id", authMiddleware, adminOnly, async (req, res) => {
+app.put("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    if (!isAdmin && product.supplierId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "You can only edit your own products" });
+    }
+
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
       {
@@ -283,6 +337,9 @@ app.put("/products/:id", authMiddleware, adminOnly, async (req, res) => {
         description: req.body.description,
         image: req.body.image,
         video: req.body.video,
+        currency: req.body.currency || product.currency,
+        status: isAdmin ? (req.body.status || product.status) : "Pending",
+        rejectionReason: isAdmin ? (req.body.rejectionReason || "") : "",
       },
       { new: true, runValidators: true }
     );
@@ -308,8 +365,31 @@ app.put("/products/:id", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
-app.delete("/products/:id", authMiddleware, adminOnly, async (req, res) => {
+app.put("/products/:id/approval", authMiddleware, adminOnly, async (req, res) => {
   try {
+    if (!["Approved", "Rejected", "Pending"].includes(req.body.status)) {
+      return res.status(400).json({ success: false, message: "Invalid product status" });
+    }
+    const product = await Product.findByIdAndUpdate(
+      req.params.id,
+      { status: req.body.status, rejectionReason: req.body.status === "Rejected" ? (req.body.rejectionReason || "Needs revision") : "" },
+      { new: true, runValidators: true }
+    ).populate("supplierId", "name email");
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    res.json({ success: true, message: `Product ${req.body.status.toLowerCase()}`, product });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to review product", error: error.message });
+  }
+});
+
+app.delete("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
+  try {
+    const product = await Product.findById(req.params.id);
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    const isAdmin = ["admin", "super_admin"].includes(req.user.role);
+    if (!isAdmin && product.supplierId?.toString() !== req.user.id) {
+      return res.status(403).json({ success: false, message: "You can only delete your own products" });
+    }
     const deletedProduct = await Product.findByIdAndDelete(req.params.id);
 
     if (!deletedProduct) {
