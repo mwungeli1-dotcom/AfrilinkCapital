@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
         {["admin", "super_admin"].includes(user?.role || "") && (
           <>
-            <h2 className="mb-3 text-lg font-black">Admin trading control centre</h2>
+            <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">Admin trading control centre</h2><Link href="/admin/users" className="rounded-full bg-orange-500 px-4 py-2 text-[10px] font-black text-white hover:bg-orange-600">Manage Users & Customers</Link></div>
 
             {overview && (
               <section className="mb-5">
