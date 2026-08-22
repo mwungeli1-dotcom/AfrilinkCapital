@@ -12,6 +12,7 @@ const Quotation = require("./models/Quotation");
 const Product = require("./models/Product");
 const SupplierRfq = require("./models/SupplierRfq");
 const Notification = require("./models/Notification");
+const SavedProduct = require("./models/SavedProduct");
 
 const app = express();
 
@@ -487,6 +488,52 @@ app.get("/products/:id", async (req, res) => {
       message: "Failed to fetch product",
       error: error.message,
     });
+  }
+});
+
+app.get("/saved-products", authMiddleware, async (req, res) => {
+  try {
+    const saved = await SavedProduct.find({ userId: req.user.id })
+      .populate({
+        path: "productId",
+        match: { isActive: { $ne: false }, $or: [{ status: "Approved" }, { status: { $exists: false } }] },
+        select: "name category description price publicPrice currency origin delivery image views requestCount createdAt",
+      })
+      .sort({ createdAt: -1 });
+    const available = saved.filter((item) => item.productId);
+    res.json({ success: true, savedProducts: available, productIds: available.map((item) => item.productId._id) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch saved products", error: error.message });
+  }
+});
+
+app.get("/saved-products/:productId/status", authMiddleware, async (req, res) => {
+  try {
+    const saved = await SavedProduct.exists({ userId: req.user.id, productId: req.params.productId });
+    res.json({ success: true, saved: Boolean(saved) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to check saved product", error: error.message });
+  }
+});
+
+app.put("/saved-products/:productId", authMiddleware, async (req, res) => {
+  try {
+    const product = await Product.findOne({
+      _id: req.params.productId,
+      isActive: { $ne: false },
+      $or: [{ status: "Approved" }, { status: { $exists: false } }],
+    });
+    if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+
+    const existing = await SavedProduct.findOne({ userId: req.user.id, productId: product._id });
+    if (existing) {
+      await existing.deleteOne();
+      return res.json({ success: true, saved: false, message: "Product removed from saved items" });
+    }
+    await SavedProduct.create({ userId: req.user.id, productId: product._id });
+    res.json({ success: true, saved: true, message: "Product saved" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update saved product", error: error.message });
   }
 });
 
