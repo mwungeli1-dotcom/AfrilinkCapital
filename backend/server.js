@@ -13,6 +13,7 @@ const Product = require("./models/Product");
 const SupplierRfq = require("./models/SupplierRfq");
 const Notification = require("./models/Notification");
 const SavedProduct = require("./models/SavedProduct");
+const VisitorSession = require("./models/VisitorSession");
 const PRODUCT_CATEGORIES = require("./config/productCategories");
 
 const app = express();
@@ -119,6 +120,44 @@ mongoose
 
 app.get("/", (req, res) => {
   res.json({ message: "Afrilink Hub Backend Running 🚀" });
+});
+
+app.post("/analytics/heartbeat", optionalAuthMiddleware, async (req, res) => {
+  try {
+    const visitorId = String(req.body.visitorId || "").trim().slice(0, 100);
+    const page = String(req.body.page || "/").trim().slice(0, 160);
+    if (!visitorId) return res.status(400).json({ success: false, message: "Visitor session required" });
+    await VisitorSession.findOneAndUpdate(
+      { visitorId },
+      { $set: { userId: req.user?.id || null, role: req.user?.role || "guest", page: page.startsWith("/") ? page : "/", lastSeen: new Date() }, $setOnInsert: { firstSeen: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update visitor presence" });
+  }
+});
+
+app.get("/admin/online-visitors", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const activeSince = new Date(Date.now() - 90000);
+    const sessions = await VisitorSession.find({ lastSeen: { $gte: activeSince } }).select("role page userId").lean();
+    const pageCounts = sessions.reduce((counts, session) => {
+      counts[session.page] = (counts[session.page] || 0) + 1;
+      return counts;
+    }, {});
+    res.json({ success: true, presence: {
+      total: sessions.length,
+      signedIn: sessions.filter((session) => session.userId).length,
+      guests: sessions.filter((session) => !session.userId).length,
+      buyers: sessions.filter((session) => session.role === "buyer").length,
+      suppliers: sessions.filter((session) => session.role === "supplier").length,
+      pages: Object.entries(pageCounts).map(([page, count]) => ({ page, count })).sort((a, b) => b.count - a.count).slice(0, 8),
+      updatedAt: new Date(),
+    } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load online visitors" });
+  }
 });
 
 // REQUESTS
