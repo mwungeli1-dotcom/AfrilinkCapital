@@ -144,6 +144,7 @@ export default function Header() {
               {profileOpen && (
                 <div className="right-0 mt-2 w-52 rounded-xl border border-gray-200 bg-white p-2 text-gray-800 shadow-xl md:absolute">
                   <Link href="/profile" onClick={() => { setProfileOpen(false); setMenuOpen(false); }} className="block rounded-lg px-4 py-3 hover:bg-gray-100">My Profile</Link>
+                  {role === "buyer" && <Link href="/saved-products" onClick={() => { setProfileOpen(false); setMenuOpen(false); }} className="block rounded-lg px-4 py-3 hover:bg-gray-100">Saved Products</Link>}
                   <Link href="/dashboard" onClick={() => { setProfileOpen(false); setMenuOpen(false); }} className="block rounded-lg px-4 py-3 hover:bg-gray-100">Dashboard</Link>
                   <button onClick={logout} className="w-full rounded-lg px-4 py-3 text-left text-red-700 hover:bg-red-50">Logout</button>
                 </div>
