@@ -4,6 +4,7 @@ import { apiFetch } from "@/src/lib/api";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
+import { PRODUCT_CATEGORIES } from "@/src/lib/productCategories";
 
 export default function CreateProductPage() {
   const [name, setName] = useState("");
@@ -182,12 +183,15 @@ export default function CreateProductPage() {
             onChange={(e) => setName(e.target.value)}
           />
 
-          <input
-            className="w-full border p-4 rounded-xl"
-            placeholder="Category"
+          <select
+            className="w-full border bg-white p-4 rounded-xl"
             value={category}
             onChange={(e) => setCategory(e.target.value)}
-          />
+            required
+          >
+            <option value="" disabled>Select a product category</option>
+            {PRODUCT_CATEGORIES.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
 
           <div className="rounded-xl border border-blue-100 bg-blue-50 p-4">
             <p className="mb-3 font-semibold text-blue-950">Pricing</p>
