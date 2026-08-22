@@ -18,7 +18,7 @@ export default function EditProductPage() {
   const [delivery, setDelivery] = useState("");
   const [origin, setOrigin] = useState("");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [video, setVideo] = useState("");
 
   const [loading, setLoading] = useState(true);
@@ -68,7 +68,7 @@ export default function EditProductPage() {
         setDelivery(product.delivery || "");
         setOrigin(product.origin || "");
         setDescription(product.description || "");
-        setImage(product.image || "");
+        setImages(product.images?.length ? product.images.slice(0, 4) : product.image ? [product.image] : []);
         setVideo(product.video || "");
       } catch (error: unknown) {
         console.error(error);
@@ -81,33 +81,24 @@ export default function EditProductPage() {
     fetchProduct();
   }, [id]);
 
-  async function uploadImage(file: File) {
+  async function uploadImages(files: File[]) {
+    const remainingSlots = 4 - images.length;
+    if (remainingSlots <= 0) return toast.error("A product can have up to 4 pictures");
+    const selectedFiles = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) toast.error(`Only ${remainingSlots} more picture${remainingSlots === 1 ? "" : "s"} allowed`);
     try {
       setUploading(true);
-
-      const formData = new FormData();
-      formData.append("file", file);
-
-      // Big boss: change "afrilink" if your Cloudinary upload preset has a different name
-      formData.append("upload_preset", "afrilink_uploads");
-
-      const res = await fetch(
-        "https://api.cloudinary.com/v1_1/dsqmjywox/image/upload",
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await res.json();
-      console.log(data);
-
-      if (!data.secure_url) {
-        throw new Error("Image upload failed");
-      }
-
-      setImage(data.secure_url);
-      toast.success("Image uploaded successfully!");
+      const uploaded = await Promise.all(selectedFiles.map(async (file) => {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("upload_preset", "afrilink_uploads");
+        const res = await fetch("https://api.cloudinary.com/v1_1/dsqmjywox/image/upload", { method: "POST", body: formData });
+        const data = await res.json();
+        if (!res.ok || !data.secure_url) throw new Error(data.error?.message || "Image upload failed");
+        return data.secure_url as string;
+      }));
+      setImages((current) => [...current, ...uploaded].slice(0, 4));
+      toast.success(`${uploaded.length} picture${uploaded.length === 1 ? "" : "s"} uploaded`);
     } catch (error: unknown) {
   console.error(error);
 
@@ -147,7 +138,8 @@ export default function EditProductPage() {
           delivery,
           origin,
           description,
-          image,
+          image: images[0] || "",
+          images,
           video,
         }),
       });
@@ -238,43 +230,30 @@ export default function EditProductPage() {
 
           <div className="space-y-3 border rounded-xl p-4">
             <label className="block font-semibold text-gray-700">
-              Product Image
+              Product Pictures ({images.length}/4)
             </label>
-
-            <input
-              className="w-full border p-3 rounded-lg"
-              placeholder="Image URL"
-              value={image}
-              onChange={(e) => setImage(e.target.value)}
-            />
 
             <input
               type="file"
               accept="image/*"
+              multiple
+              disabled={uploading || images.length >= 4}
               className="w-full border p-3 rounded-lg bg-gray-50"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (!file) return;
-                uploadImage(file);
+                const files = Array.from(e.target.files || []);
+                if (!files.length) return;
+                uploadImages(files);
               }}
             />
 
             {uploading && (
               <p className="text-blue-700 font-semibold">
-                Uploading image...
+                Uploading pictures...
               </p>
             )}
 
-            {image && (
-              <div className="border rounded-xl p-4 bg-gray-50">
-                <p className="font-semibold mb-2">Image Preview</p>
-                <img
-                  src={image}
-                  alt="Product preview"
-                  className="w-full max-h-64 object-contain rounded-xl"
-                />
-              </div>
-            )}
+            <p className="text-sm text-gray-600">The first picture is the main catalogue image.</p>
+            {images.length > 0 && <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{images.map((url, index) => <div key={url} className="relative overflow-hidden rounded-xl border bg-gray-50"><img src={url} alt={`Product preview ${index + 1}`} className="aspect-square w-full object-cover" /><button type="button" onClick={() => setImages((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white" aria-label={`Remove picture ${index + 1}`}>×</button>{index === 0 && <span className="absolute bottom-1 left-1 rounded bg-blue-950 px-2 py-1 text-[10px] font-bold text-white">Main</span>}</div>)}</div>}
           </div>
 
           <input
