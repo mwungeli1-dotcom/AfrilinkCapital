@@ -11,6 +11,7 @@ const User = require("./models/User");
 const Quotation = require("./models/Quotation");
 const Product = require("./models/Product");
 const SupplierRfq = require("./models/SupplierRfq");
+const Notification = require("./models/Notification");
 
 const app = express();
 
@@ -74,6 +75,22 @@ function adminOnly(req, res, next) {
   }
 
   next();
+}
+
+async function notifyUser(userId, notification) {
+  if (!userId) return;
+  await Notification.create({ userId, ...notification }).catch((error) => {
+    console.error("Notification error:", error.message);
+  });
+}
+
+async function notifyAdmins(notification) {
+  const admins = await User.find({ role: { $in: ["admin", "super_admin"] } }).select("_id");
+  if (admins.length) {
+    await Notification.insertMany(admins.map((admin) => ({ userId: admin._id, ...notification }))).catch((error) => {
+      console.error("Admin notification error:", error.message);
+    });
+  }
 }
 
 mongoose
@@ -231,6 +248,13 @@ app.put("/my/quotations/:id/status", authMiddleware, async (req, res) => {
 
     request.status = req.body.status === "Accepted" ? "Awaiting Deposit" : "Reviewing";
     await request.save();
+
+    await notifyAdmins({
+      type: "response",
+      title: `Buyer ${req.body.status.toLowerCase()} quotation`,
+      message: `${request.customerName || "A buyer"} ${req.body.status.toLowerCase()} ${quotation.quotationNumber}.`,
+      href: `/requests/${request._id}`,
+    });
 
     res.json({ success: true, message: `Quotation ${req.body.status.toLowerCase()}`, status: quotation.status });
   } catch (error) {
@@ -491,6 +515,12 @@ app.put("/products/:id/approval", authMiddleware, adminOnly, async (req, res) =>
       { new: true, runValidators: true }
     ).populate("supplierId", "name email");
     if (!product) return res.status(404).json({ success: false, message: "Product not found" });
+    await notifyUser(product.supplierId?._id, {
+      type: "approval",
+      title: `Product ${req.body.status.toLowerCase()}`,
+      message: req.body.status === "Approved" ? `${product.name} is now live in the Afrilink catalogue.` : `${product.name} requires attention: ${product.rejectionReason || "Please contact Afrilink."}`,
+      href: "/admin/products",
+    });
     res.json({ success: true, message: `Product ${req.body.status.toLowerCase()}`, product });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to review product", error: error.message });
@@ -849,6 +879,13 @@ app.put("/supplier-applications/:id/approve", authMiddleware, adminOnly, async (
       role: "supplier",
     });
 
+    await notifyUser(application.userId, {
+      type: "approval",
+      title: "Supplier account approved",
+      message: "Your Afrilink supplier account is approved. Sign out and log back in to activate product listing and private sourcing access.",
+      href: "/dashboard",
+    });
+
     res.json({
       success: true,
       message: "Supplier application approved successfully",
@@ -876,6 +913,13 @@ app.put("/supplier-applications/:id/reject", authMiddleware, adminOnly, async (r
 
     application.status = "Rejected";
     await application.save();
+
+    await notifyUser(application.userId, {
+      type: "approval",
+      title: "Supplier application update",
+      message: "Your supplier application was not approved. Please contact Afrilink for the next steps.",
+      href: "/profile",
+    });
 
     res.json({
       success: true,
@@ -908,6 +952,12 @@ app.post("/supplier-rfqs", authMiddleware, adminOnly, async (req, res) => {
       request.status = "Sourcing Supplier";
       await request.save();
     }
+    await notifyUser(supplierId, {
+      type: "rfq",
+      title: "New factory price request",
+      message: `Afrilink requested your confidential offer for ${request.title}.`,
+      href: "/supplier/price-requests",
+    });
     res.json({ success: true, message: "Private price request sent to supplier", rfq });
   } catch (error) {
     const duplicate = error.code === 11000;
@@ -978,6 +1028,12 @@ app.put("/supplier/rfqs/:id/respond", authMiddleware, supplierOrAdmin, async (re
       respondedAt: new Date(),
     });
     await rfq.save();
+    await notifyAdmins({
+      type: "response",
+      title: "Supplier offer received",
+      message: `A supplier submitted a confidential offer for this request.`,
+      href: `/requests/${rfq.requestId}`,
+    });
     res.json({ success: true, message: "Confidential factory offer submitted to Afrilink", rfq });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to submit supplier offer", error: error.message });
@@ -1032,6 +1088,12 @@ app.post("/quotations", authMiddleware, adminOnly, async (req, res) => {
     if (status === "Sent") {
       request.status = "Quotation Ready";
       await request.save();
+      await notifyUser(request.userId, {
+        type: "quotation",
+        title: "Your Afrilink quotation is ready",
+        message: `${quotation.quotationNumber} is ready for your review.`,
+        href: `/my-requests/${request._id}`,
+      });
     }
 
     res.json({
@@ -1071,7 +1133,13 @@ app.put("/quotations/:id/status", authMiddleware, adminOnly, async (req, res) =>
     if (!quotation) return res.status(404).json({ success: false, message: "Quotation not found" });
 
     if (req.body.status === "Sent") {
-      await Request.findByIdAndUpdate(quotation.requestId, { status: "Quotation Ready" });
+      const request = await Request.findByIdAndUpdate(quotation.requestId, { status: "Quotation Ready" }, { new: true });
+      await notifyUser(request?.userId, {
+        type: "quotation",
+        title: "Your Afrilink quotation is ready",
+        message: `${quotation.quotationNumber} is ready for your review.`,
+        href: `/my-requests/${quotation.requestId}`,
+      });
     } else if (req.body.status === "Accepted") {
       await Request.findByIdAndUpdate(quotation.requestId, { status: "Awaiting Deposit" });
     } else if (req.body.status === "Rejected") {
@@ -1102,7 +1170,13 @@ app.put("/quotations/:id/payment", authMiddleware, adminOnly, async (req, res) =
     await quotation.save();
 
     if (amountPaid > 0) {
-      await Request.findByIdAndUpdate(quotation.requestId, { status: "Ordered" });
+      const request = await Request.findByIdAndUpdate(quotation.requestId, { status: "Ordered" }, { new: true });
+      await notifyUser(request?.userId, {
+        type: "payment",
+        title: "Payment record updated",
+        message: `${quotation.currency} ${amountPaid.toLocaleString()} is recorded against ${quotation.quotationNumber}.`,
+        href: `/my-requests/${quotation.requestId}`,
+      });
     }
 
     res.json({
@@ -1113,6 +1187,42 @@ app.put("/quotations/:id/payment", authMiddleware, adminOnly, async (req, res) =
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update payment", error: error.message });
+  }
+});
+
+// NOTIFICATIONS
+app.get("/notifications", authMiddleware, async (req, res) => {
+  try {
+    const [notifications, unreadCount] = await Promise.all([
+      Notification.find({ userId: req.user.id }).sort({ createdAt: -1 }).limit(50),
+      Notification.countDocuments({ userId: req.user.id, readAt: { $exists: false } }),
+    ]);
+    res.json({ success: true, notifications, unreadCount });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch notifications", error: error.message });
+  }
+});
+
+app.put("/notifications/read-all", authMiddleware, async (req, res) => {
+  try {
+    await Notification.updateMany({ userId: req.user.id, readAt: { $exists: false } }, { readAt: new Date() });
+    res.json({ success: true, message: "Notifications marked as read" });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update notifications", error: error.message });
+  }
+});
+
+app.put("/notifications/:id/read", authMiddleware, async (req, res) => {
+  try {
+    const notification = await Notification.findOneAndUpdate(
+      { _id: req.params.id, userId: req.user.id },
+      { readAt: new Date() },
+      { new: true }
+    );
+    if (!notification) return res.status(404).json({ success: false, message: "Notification not found" });
+    res.json({ success: true, notification });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update notification", error: error.message });
   }
 });
 
