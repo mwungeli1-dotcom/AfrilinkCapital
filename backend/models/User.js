@@ -37,6 +37,13 @@ const userSchema = new mongoose.Schema(
     country: { type: String, trim: true, default: "" },
     companyName: { type: String, trim: true, default: "" },
     avatar: { type: String, trim: true, default: "" },
+    accountStatus: {
+      type: String,
+      enum: ["active", "suspended"],
+      default: "active",
+    },
+    suspendedAt: { type: Date, default: null },
+    suspensionReason: { type: String, trim: true, default: "" },
   },
   { timestamps: true }
 );
