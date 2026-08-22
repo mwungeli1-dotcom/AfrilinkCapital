@@ -38,8 +38,16 @@ export default function Header() {
       setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin, role: savedRole });
       setProfile(savedProfile);
       if (token) {
-        apiFetch("/notifications")
-          .then((data) => setUnreadCount(data.unreadCount || 0))
+        Promise.all([apiFetch("/profile"), apiFetch("/notifications")])
+          .then(([profileData, notificationData]) => {
+            const currentUser = profileData.user;
+            localStorage.setItem("user", JSON.stringify(currentUser));
+            const currentRole = currentUser?.role || "";
+            setAuthState({ isLoggedIn: true, isAdmin: ["admin", "super_admin"].includes(currentRole), role: currentRole });
+            setProfile({ name: currentUser?.name || "Account", avatar: currentUser?.avatar || "" });
+            setUnreadCount(notificationData.unreadCount || 0);
+            window.dispatchEvent(new Event("session-refreshed"));
+          })
           .catch(() => setUnreadCount(0));
       } else {
         setUnreadCount(0);
