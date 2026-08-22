@@ -13,6 +13,7 @@ const Product = require("./models/Product");
 const SupplierRfq = require("./models/SupplierRfq");
 const Notification = require("./models/Notification");
 const SavedProduct = require("./models/SavedProduct");
+const PRODUCT_CATEGORIES = require("./config/productCategories");
 
 const app = express();
 
@@ -383,6 +384,9 @@ app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
     if (missingFields.length) {
       return res.status(400).json({ success: false, message: "Complete all required product details", missingFields });
     }
+    if (!PRODUCT_CATEGORIES.includes(req.body.category)) {
+      return res.status(400).json({ success: false, message: "Select a valid product category" });
+    }
     const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency);
     if (!pricing) return res.status(400).json({ success: false, message: "Enter a valid supplier price greater than zero" });
     const isAdmin = ["admin", "super_admin"].includes(req.user.role);
@@ -544,6 +548,9 @@ app.put("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
     const isAdmin = ["admin", "super_admin"].includes(req.user.role);
     if (!isAdmin && product.supplierId?.toString() !== req.user.id) {
       return res.status(403).json({ success: false, message: "You can only edit your own products" });
+    }
+    if (!PRODUCT_CATEGORIES.includes(req.body.category)) {
+      return res.status(400).json({ success: false, message: "Select a valid product category" });
     }
 
     const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency || product.currency);
