@@ -52,8 +52,9 @@ async function authMiddleware(req, res, next) {
   }
 
   try {
-    const user = await User.findById(decoded.id).select("role");
+    const user = await User.findById(decoded.id).select("role accountStatus");
     if (!user) return res.status(401).json({ success: false, message: "Account no longer exists" });
+    if (user.accountStatus === "suspended") return res.status(403).json({ success: false, message: "This account has been suspended. Contact Afrilink support." });
     req.user = { id: user._id.toString(), role: user.role };
     next();
   } catch (error) {
@@ -77,8 +78,9 @@ async function optionalAuthMiddleware(req, res, next) {
   }
 
   try {
-    const user = await User.findById(decoded.id).select("role");
+    const user = await User.findById(decoded.id).select("role accountStatus");
     if (!user) return res.status(401).json({ success: false, message: "Account no longer exists" });
+    if (user.accountStatus === "suspended") return res.status(403).json({ success: false, message: "This account has been suspended. Contact Afrilink support." });
     req.user = { id: user._id.toString(), role: user.role };
     next();
   } catch (error) {
@@ -779,6 +781,10 @@ app.post("/login", async (req, res) => {
       });
     }
 
+    if (user.accountStatus === "suspended") {
+      return res.status(403).json({ success: false, message: "This account has been suspended. Contact Afrilink support." });
+    }
+
     const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
@@ -912,6 +918,55 @@ app.get("/admin/overview", authMiddleware, adminOnly, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to load admin overview", error: error.message });
+  }
+});
+
+app.get("/admin/users", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const [users, requestCounts, productCounts, activeSessions] = await Promise.all([
+      User.find().select("name email role supplierStatus phone country companyName avatar accountStatus suspendedAt suspensionReason createdAt updatedAt").sort({ createdAt: -1 }).lean(),
+      Request.aggregate([{ $match: { userId: { $ne: null } } }, { $group: { _id: "$userId", count: { $sum: 1 } } }]),
+      Product.aggregate([{ $group: { _id: "$supplierId", count: { $sum: 1 } } }]),
+      VisitorSession.find({ userId: { $ne: null }, lastSeen: { $gte: new Date(Date.now() - 90000) } }).select("userId lastSeen").lean(),
+    ]);
+    const requestsByUser = Object.fromEntries(requestCounts.map((item) => [String(item._id), item.count]));
+    const productsByUser = Object.fromEntries(productCounts.map((item) => [String(item._id), item.count]));
+    const onlineByUser = Object.fromEntries(activeSessions.map((item) => [String(item.userId), item.lastSeen]));
+    const normalizedUsers = users.map((user) => ({
+      ...user,
+      accountStatus: user.accountStatus || "active",
+      requestCount: requestsByUser[String(user._id)] || 0,
+      productCount: productsByUser[String(user._id)] || 0,
+      online: Boolean(onlineByUser[String(user._id)]),
+      lastSeen: onlineByUser[String(user._id)] || null,
+    }));
+    res.json({ success: true, users: normalizedUsers, summary: {
+      total: users.length,
+      buyers: users.filter((user) => user.role === "buyer").length,
+      suppliers: users.filter((user) => user.role === "supplier").length,
+      admins: users.filter((user) => ["admin", "super_admin"].includes(user.role)).length,
+      suspended: users.filter((user) => user.accountStatus === "suspended").length,
+    } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load users", error: error.message });
+  }
+});
+
+app.put("/admin/users/:id/status", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    if (!["active", "suspended"].includes(req.body.status)) return res.status(400).json({ success: false, message: "Choose active or suspended" });
+    if (req.params.id === req.user.id) return res.status(400).json({ success: false, message: "You cannot change your own account status" });
+    const target = await User.findById(req.params.id);
+    if (!target) return res.status(404).json({ success: false, message: "User not found" });
+    if (target.role === "super_admin") return res.status(403).json({ success: false, message: "Super-admin accounts are protected" });
+    if (target.role === "admin" && req.user.role !== "super_admin") return res.status(403).json({ success: false, message: "Only a super admin can manage admin accounts" });
+    target.accountStatus = req.body.status;
+    target.suspendedAt = req.body.status === "suspended" ? new Date() : null;
+    target.suspensionReason = req.body.status === "suspended" ? String(req.body.reason || "Suspended by Afrilink administration").trim().slice(0, 300) : "";
+    await target.save();
+    res.json({ success: true, message: req.body.status === "suspended" ? "Account suspended" : "Account reactivated", user: removePassword(target) });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to update account status", error: error.message });
   }
 });
 // SUPPLIER APPLICATIONS
