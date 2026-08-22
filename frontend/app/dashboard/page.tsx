@@ -106,7 +106,7 @@ export default function DashboardPage() {
 
         {["admin", "super_admin"].includes(user?.role || "") && (
           <>
-            <div className="mb-3 flex items-center justify-between"><h2 className="text-lg font-black">Admin trading control centre</h2><Link href="/admin/users" className="rounded-full bg-orange-500 px-4 py-2 text-[10px] font-black text-white hover:bg-orange-600">Manage Users & Customers</Link></div>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><h2 className="text-lg font-black">Admin trading control centre</h2><div className="flex gap-2"><Link href="/admin/analytics" className="rounded-full border border-blue-950 bg-white px-4 py-2 text-[10px] font-black text-blue-950 hover:bg-blue-50">Traffic Analytics</Link><Link href="/admin/users" className="rounded-full bg-orange-500 px-4 py-2 text-[10px] font-black text-white hover:bg-orange-600">Manage Users & Customers</Link></div></div>
 
             {overview && (
               <section className="mb-5">

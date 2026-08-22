@@ -1,0 +1,29 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import { apiFetch } from "@/src/lib/api";
+
+type Analytics = { days: number; totals: { uniqueVisitors: number; pageViews: number; registrations: number; rfqs: number; conversionRate: number }; daily: Array<{ date: string; visitors: number; pageViews: number; registrations: number; rfqs: number }>; topPages: Array<{ page: string; views: number }> };
+
+export default function TrafficAnalyticsPage() {
+  const [days, setDays] = useState<7 | 30>(7);
+  const [analytics, setAnalytics] = useState<Analytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    apiFetch(`/admin/traffic-analytics?days=${days}`).then((data) => setAnalytics(data.analytics)).catch((error) => toast.error(error instanceof Error ? error.message : "Failed to load analytics")).finally(() => setLoading(false));
+  }, [days]);
+
+  const maxViews = Math.max(...(analytics?.daily.map((item) => item.pageViews) || [1]), 1);
+  return <main className="min-h-screen bg-[#f4f4f4] px-3 py-5 lg:px-5 lg:py-8"><div className="mx-auto max-w-[1280px]">
+    <div className="mb-5 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs text-slate-500"><Link href="/dashboard" className="hover:text-orange-600">My Afrilink</Link> › Traffic Analytics</p><h1 className="mt-1 text-3xl font-black">Marketplace Analytics</h1><p className="mt-1 text-sm text-slate-500">Understand traffic, customer growth and RFQ conversion.</p></div><div className="flex rounded-full border bg-white p-1 text-xs font-bold"><button onClick={() => setDays(7)} className={`rounded-full px-4 py-2 ${days === 7 ? "bg-blue-950 text-white" : "text-slate-600"}`}>7 days</button><button onClick={() => setDays(30)} className={`rounded-full px-4 py-2 ${days === 30 ? "bg-blue-950 text-white" : "text-slate-600"}`}>30 days</button></div></div>
+    {loading || !analytics ? <div className="rounded-lg bg-white p-12 text-center text-sm text-slate-500">Loading marketplace analytics...</div> : <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">{[["Unique visitors", analytics.totals.uniqueVisitors], ["Page views", analytics.totals.pageViews], ["New accounts", analytics.totals.registrations], ["RFQs submitted", analytics.totals.rfqs], ["Visitor → RFQ", `${analytics.totals.conversionRate}%`]].map(([label, value], index) => <div key={label} className={`rounded-lg border p-4 shadow-sm ${index === 4 ? "border-orange-500 bg-orange-500 text-white" : "bg-white"}`}><p className={`text-xs ${index === 4 ? "text-orange-50" : "text-slate-500"}`}>{label}</p><p className="mt-1 text-2xl font-black">{value}</p></div>)}</div>
+      <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_340px]"><section className="rounded-lg border bg-white p-5 shadow-sm"><div className="flex items-center justify-between"><div><h2 className="font-black">Traffic trend</h2><p className="mt-1 text-xs text-slate-500">Daily page views and unique visitors</p></div><span className="text-[10px] font-bold text-blue-700">LAST {days} DAYS</span></div><div className="mt-6 flex h-64 items-end gap-1 border-b border-slate-200 sm:gap-2">{analytics.daily.map((item) => <div key={item.date} className="group flex h-full min-w-0 flex-1 flex-col justify-end"><div className="relative mx-auto w-full max-w-8 rounded-t bg-blue-900 transition hover:bg-orange-500" style={{ height: `${Math.max((item.pageViews / maxViews) * 88, item.pageViews ? 4 : 1)}%` }}><div className="pointer-events-none absolute -top-16 left-1/2 hidden -translate-x-1/2 whitespace-nowrap rounded bg-slate-950 px-2 py-1 text-[9px] text-white group-hover:block">{item.pageViews} views · {item.visitors} visitors</div></div><p className="mt-2 truncate text-center text-[8px] text-slate-400">{new Date(`${item.date}T00:00:00`).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</p></div>)}</div><div className="mt-5 grid grid-cols-3 gap-3 text-center text-xs"><div className="rounded bg-slate-50 p-3"><p className="text-slate-500">Views / visitor</p><p className="mt-1 font-black">{analytics.totals.uniqueVisitors ? (analytics.totals.pageViews / analytics.totals.uniqueVisitors).toFixed(1) : "0"}</p></div><div className="rounded bg-slate-50 p-3"><p className="text-slate-500">Account conversion</p><p className="mt-1 font-black">{analytics.totals.uniqueVisitors ? ((analytics.totals.registrations / analytics.totals.uniqueVisitors) * 100).toFixed(1) : "0"}%</p></div><div className="rounded bg-slate-50 p-3"><p className="text-slate-500">RFQ conversion</p><p className="mt-1 font-black">{analytics.totals.conversionRate}%</p></div></div></section>
+      <aside className="rounded-lg border bg-white p-5 shadow-sm"><h2 className="font-black">Most visited pages</h2><p className="mt-1 text-xs text-slate-500">Where marketplace attention is concentrated</p><div className="mt-4 space-y-3">{analytics.topPages.length ? analytics.topPages.map((item, index) => <div key={item.page}><div className="flex items-center justify-between text-xs"><span className="max-w-[75%] truncate"><strong className="mr-2 text-slate-400">{index + 1}</strong>{item.page === "/" ? "Homepage" : item.page}</span><strong>{item.views}</strong></div><div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100"><div className="h-full rounded-full bg-orange-500" style={{ width: `${(item.views / analytics.topPages[0].views) * 100}%` }} /></div></div>) : <p className="rounded bg-slate-50 p-4 text-xs text-slate-500">Analytics begin collecting after this release is deployed.</p>}</div></aside></div>
+      <p className="mt-4 rounded-lg border border-blue-100 bg-blue-50 p-4 text-xs text-slate-600"><strong className="text-blue-950">Privacy:</strong> reports use anonymous visitor IDs and aggregate counts. Traffic records automatically expire after 90 days.</p>
+    </>}
+  </div></main>;
+}

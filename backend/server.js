@@ -14,6 +14,7 @@ const SupplierRfq = require("./models/SupplierRfq");
 const Notification = require("./models/Notification");
 const SavedProduct = require("./models/SavedProduct");
 const VisitorSession = require("./models/VisitorSession");
+const PageVisit = require("./models/PageVisit");
 const PRODUCT_CATEGORIES = require("./config/productCategories");
 
 const app = express();
@@ -127,13 +128,17 @@ app.get("/", (req, res) => {
 app.post("/analytics/heartbeat", optionalAuthMiddleware, async (req, res) => {
   try {
     const visitorId = String(req.body.visitorId || "").trim().slice(0, 100);
-    const page = String(req.body.page || "/").trim().slice(0, 160);
+    const requestedPage = String(req.body.page || "/").trim().slice(0, 160);
+    const page = requestedPage.startsWith("/") ? requestedPage : "/";
     if (!visitorId) return res.status(400).json({ success: false, message: "Visitor session required" });
+    const previousSession = await VisitorSession.findOne({ visitorId }).select("page lastSeen").lean();
+    const shouldRecordVisit = !previousSession || previousSession.page !== page || new Date(previousSession.lastSeen).getTime() < Date.now() - 1800000;
     await VisitorSession.findOneAndUpdate(
       { visitorId },
-      { $set: { userId: req.user?.id || null, role: req.user?.role || "guest", page: page.startsWith("/") ? page : "/", lastSeen: new Date() }, $setOnInsert: { firstSeen: new Date() } },
+      { $set: { userId: req.user?.id || null, role: req.user?.role || "guest", page, lastSeen: new Date() }, $setOnInsert: { firstSeen: new Date() } },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+    if (shouldRecordVisit) await PageVisit.create({ visitorId, userId: req.user?.id || null, role: req.user?.role || "guest", page });
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to update visitor presence" });
@@ -159,6 +164,43 @@ app.get("/admin/online-visitors", authMiddleware, adminOnly, async (req, res) =>
     } });
   } catch (error) {
     res.status(500).json({ success: false, message: "Failed to load online visitors" });
+  }
+});
+
+app.get("/admin/traffic-analytics", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const days = req.query.days === "30" ? 30 : 7;
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - (days - 1));
+    const [visits, registrations, rfqs] = await Promise.all([
+      PageVisit.find({ createdAt: { $gte: start } }).select("visitorId page createdAt").lean(),
+      User.find({ createdAt: { $gte: start } }).select("createdAt").lean(),
+      Request.find({ createdAt: { $gte: start } }).select("createdAt").lean(),
+    ]);
+    const daily = Array.from({ length: days }, (_, index) => {
+      const date = new Date(start);
+      date.setUTCDate(start.getUTCDate() + index);
+      return { date: date.toISOString().slice(0, 10), visitors: new Set(), pageViews: 0, registrations: 0, rfqs: 0 };
+    });
+    const byDate = Object.fromEntries(daily.map((item) => [item.date, item]));
+    const pageCounts = {};
+    visits.forEach((visit) => {
+      const key = new Date(visit.createdAt).toISOString().slice(0, 10);
+      if (byDate[key]) { byDate[key].visitors.add(visit.visitorId); byDate[key].pageViews += 1; }
+      pageCounts[visit.page] = (pageCounts[visit.page] || 0) + 1;
+    });
+    registrations.forEach((item) => { const key = new Date(item.createdAt).toISOString().slice(0, 10); if (byDate[key]) byDate[key].registrations += 1; });
+    rfqs.forEach((item) => { const key = new Date(item.createdAt).toISOString().slice(0, 10); if (byDate[key]) byDate[key].rfqs += 1; });
+    const uniqueVisitors = new Set(visits.map((visit) => visit.visitorId)).size;
+    res.json({ success: true, analytics: {
+      days,
+      totals: { uniqueVisitors, pageViews: visits.length, registrations: registrations.length, rfqs: rfqs.length, conversionRate: uniqueVisitors ? Math.round((rfqs.length / uniqueVisitors) * 1000) / 10 : 0 },
+      daily: daily.map((item) => ({ ...item, visitors: item.visitors.size })),
+      topPages: Object.entries(pageCounts).map(([page, views]) => ({ page, views })).sort((a, b) => b.views - a.views).slice(0, 10),
+    } });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load traffic analytics" });
   }
 });
 
