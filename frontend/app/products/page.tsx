@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { apiFetch } from "@/src/lib/api";
 import BuyerOnly from "@/components/BuyerOnly";
+import SaveProductButton from "@/components/SaveProductButton";
 
 type Product = {
   _id: string;
@@ -30,6 +31,7 @@ export default function ProductsPage() {
   const [category, setCategory] = useState("all");
   const [origin, setOrigin] = useState("all");
   const [sort, setSort] = useState("newest");
+  const [savedIds, setSavedIds] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchProducts() {
@@ -48,7 +50,21 @@ export default function ProductsPage() {
     }
 
     fetchProducts();
+
+    if (localStorage.getItem("token")) {
+      apiFetch("/saved-products")
+        .then((data) => setSavedIds(data.productIds || []))
+        .catch((error) => console.error("Could not load saved products", error));
+    }
   }, []);
+
+  const updateSaved = (productId: string, saved: boolean) => {
+    setSavedIds((current) =>
+      saved
+        ? Array.from(new Set([...current, productId]))
+        : current.filter((id) => id !== productId)
+    );
+  };
 
   const categories = useMemo(
     () =>
@@ -196,7 +212,8 @@ export default function ProductsPage() {
 
       {!error && <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
         {filteredProducts.map((product) => (
-          <Link href={`/products/${product._id}`} key={product._id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-yellow-400 hover:shadow-xl">
+          <article key={product._id} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-yellow-400 hover:shadow-xl">
+          <Link href={`/products/${product._id}`}>
             <div className="relative aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
               {product.image ? (
                 <Image
@@ -225,6 +242,15 @@ export default function ProductsPage() {
             <p className="mt-1 text-xs text-slate-500">{product.origin || "Global supply"} • {product.delivery || "Delivery quoted"}</p>
             <div className="mt-3 flex items-center justify-between text-[10px] text-slate-500"><span>{product.views || 0} views</span><span className="font-bold text-blue-800">View details →</span></div></div>
           </Link>
+          <div className="absolute right-2 top-2">
+            <SaveProductButton
+              productId={product._id}
+              initialSaved={savedIds.includes(product._id)}
+              compact
+              onChange={(saved) => updateSaved(product._id, saved)}
+            />
+          </div>
+          </article>
         ))}
       </div>}
       </div>
