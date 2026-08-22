@@ -930,6 +930,18 @@ app.get("/admin/requests/:id/supplier-rfqs", authMiddleware, adminOnly, async (r
   }
 });
 
+app.get("/admin/supplier-rfqs/:id", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    const rfq = await SupplierRfq.findById(req.params.id)
+      .populate("supplierId", "name email companyName")
+      .populate("requestId", "title quantity");
+    if (!rfq) return res.status(404).json({ success: false, message: "Supplier offer not found" });
+    res.json({ success: true, rfq });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to fetch supplier offer", error: error.message });
+  }
+});
+
 app.get("/supplier/rfqs", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
     const query = ["admin", "super_admin"].includes(req.user.role) ? {} : { supplierId: req.user.id };
@@ -950,12 +962,14 @@ app.put("/supplier/rfqs/:id/respond", authMiddleware, supplierOrAdmin, async (re
       return res.status(404).json({ success: false, message: "Price request not found" });
     }
     const unitPrice = Number(req.body.unitPrice);
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0 || !["USD", "ZMW"].includes(req.body.currency) || !String(req.body.leadTime || "").trim()) {
-      return res.status(400).json({ success: false, message: "Enter a valid price, currency, and lead time" });
+    const totalPrice = Number(req.body.totalPrice);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0 || !Number.isFinite(totalPrice) || totalPrice <= 0 || !["USD", "ZMW"].includes(req.body.currency) || !String(req.body.leadTime || "").trim()) {
+      return res.status(400).json({ success: false, message: "Enter a valid unit price, total offer, currency, and lead time" });
     }
     Object.assign(rfq, {
       currency: req.body.currency,
       unitPrice,
+      totalPrice,
       minimumOrderQuantity: req.body.minimumOrderQuantity,
       leadTime: req.body.leadTime,
       shippingTerms: req.body.shippingTerms,
@@ -974,16 +988,28 @@ app.post("/quotations", authMiddleware, adminOnly, async (req, res) => {
   try {
     const { supplierName, supplierEmail, requestId, currency = "ZMW", supplierCost,
       freightCost = 0, customsCost = 0, serviceFee = 0, markupAmount = 0,
-      deliveryTime, validityDays = 14, terms, notes, status = "Draft" } = req.body;
+      deliveryTime, validityDays = 14, terms, notes, status = "Draft", sourceRfqId } = req.body;
 
-    if (!supplierName || !requestId || !deliveryTime || supplierCost === undefined) {
+    let sourceRfq = null;
+    if (sourceRfqId) {
+      sourceRfq = await SupplierRfq.findOne({ _id: sourceRfqId, requestId, status: "Responded" }).populate("supplierId", "name email companyName");
+      if (!sourceRfq) return res.status(400).json({ success: false, message: "Select a valid responded supplier offer" });
+    }
+
+    const finalSupplierName = sourceRfq?.supplierId?.companyName || sourceRfq?.supplierId?.name || supplierName;
+    const finalSupplierEmail = sourceRfq?.supplierId?.email || supplierEmail;
+    const finalCurrency = sourceRfq?.currency || currency;
+    const finalSupplierCost = sourceRfq?.totalPrice || supplierCost;
+    const finalDeliveryTime = sourceRfq?.leadTime || deliveryTime;
+
+    if (!finalSupplierName || !requestId || !finalDeliveryTime || finalSupplierCost === undefined) {
       return res.status(400).json({ success: false, message: "Supplier, request, supplier cost, and delivery time are required" });
     }
 
     const request = await Request.findById(requestId);
     if (!request) return res.status(404).json({ success: false, message: "Request not found" });
 
-    const amounts = [supplierCost, freightCost, customsCost, serviceFee, markupAmount].map(Number);
+    const amounts = [finalSupplierCost, freightCost, customsCost, serviceFee, markupAmount].map(Number);
     if (amounts.some((amount) => !Number.isFinite(amount) || amount < 0)) {
       return res.status(400).json({ success: false, message: "Quotation amounts must be valid positive numbers" });
     }
@@ -992,11 +1018,16 @@ app.post("/quotations", authMiddleware, adminOnly, async (req, res) => {
     const quotationNumber = `AFC-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`;
 
     const quotation = await Quotation.create({
-      quotationNumber, supplierName, supplierEmail, requestId, currency,
+      quotationNumber, supplierName: finalSupplierName, supplierEmail: finalSupplierEmail, requestId, currency: finalCurrency, sourceRfqId,
       supplierCost: amounts[0], freightCost: amounts[1], customsCost: amounts[2],
       serviceFee: amounts[3], markupAmount: amounts[4], totalAmount,
-      deliveryTime, validityDays, terms, notes, status, createdBy: req.user.id,
+      deliveryTime: finalDeliveryTime, validityDays, terms, notes, status, createdBy: req.user.id,
     });
+
+    if (sourceRfq) {
+      sourceRfq.status = "Selected";
+      await sourceRfq.save();
+    }
 
     if (status === "Sent") {
       request.status = "Quotation Ready";
