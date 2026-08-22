@@ -4,6 +4,7 @@ const quotationSchema = new mongoose.Schema(
   {
     quotationNumber: { type: String, required: true, unique: true, sparse: true },
     requestId: { type: mongoose.Schema.Types.ObjectId, ref: "Request", required: true },
+    sourceRfqId: { type: mongoose.Schema.Types.ObjectId, ref: "SupplierRfq", unique: true, sparse: true },
     supplierName: { type: String, required: true },
     supplierEmail: { type: String, lowercase: true, trim: true },
     currency: { type: String, enum: ["ZMW", "USD"], default: "ZMW" },

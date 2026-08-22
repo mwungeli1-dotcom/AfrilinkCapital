@@ -8,9 +8,10 @@ type Rfq = {
   _id: string;
   message: string;
   deadline?: string;
-  status: "Sent" | "Responded" | "Closed";
+  status: "Sent" | "Responded" | "Selected" | "Closed";
   currency?: "USD" | "ZMW";
   unitPrice?: number;
+  totalPrice?: number;
   minimumOrderQuantity?: string;
   leadTime?: string;
   shippingTerms?: string;
@@ -18,7 +19,7 @@ type Rfq = {
   requestId: { title: string; description?: string; quantity?: string; country?: string; deliveryLocation?: string };
 };
 
-type Draft = { currency: "USD" | "ZMW"; unitPrice: string; minimumOrderQuantity: string; leadTime: string; shippingTerms: string; notes: string };
+type Draft = { currency: "USD" | "ZMW"; unitPrice: string; totalPrice: string; minimumOrderQuantity: string; leadTime: string; shippingTerms: string; notes: string };
 
 export default function SupplierPriceRequestsPage() {
   const [rfqs, setRfqs] = useState<Rfq[]>([]);
@@ -36,6 +37,7 @@ export default function SupplierPriceRequestsPage() {
   const draftFor = (rfq: Rfq): Draft => drafts[rfq._id] || {
     currency: rfq.currency || "USD",
     unitPrice: rfq.unitPrice ? String(rfq.unitPrice) : "",
+    totalPrice: rfq.totalPrice ? String(rfq.totalPrice) : "",
     minimumOrderQuantity: rfq.minimumOrderQuantity || "",
     leadTime: rfq.leadTime || "",
     shippingTerms: rfq.shippingTerms || "EXW",
@@ -77,12 +79,13 @@ export default function SupplierPriceRequestsPage() {
             <div className="mt-6 grid gap-4 md:grid-cols-2">
               <label><span className="mb-1 block text-sm font-bold">Currency</span><select className="w-full rounded-lg border bg-white p-3" value={draft.currency} onChange={(e) => updateDraft(rfq, "currency", e.target.value)}><option>USD</option><option>ZMW</option></select></label>
               <label><span className="mb-1 block text-sm font-bold">Factory unit price</span><input type="number" min="0" step="0.01" className="w-full rounded-lg border p-3" value={draft.unitPrice} onChange={(e) => updateDraft(rfq, "unitPrice", e.target.value)} /></label>
+              <label><span className="mb-1 block text-sm font-bold">Total factory offer</span><input type="number" min="0" step="0.01" className="w-full rounded-lg border p-3" value={draft.totalPrice} onChange={(e) => updateDraft(rfq, "totalPrice", e.target.value)} /></label>
               <label><span className="mb-1 block text-sm font-bold">Minimum order quantity</span><input className="w-full rounded-lg border p-3" placeholder="e.g. 100 units" value={draft.minimumOrderQuantity} onChange={(e) => updateDraft(rfq, "minimumOrderQuantity", e.target.value)} /></label>
               <label><span className="mb-1 block text-sm font-bold">Production lead time</span><input className="w-full rounded-lg border p-3" placeholder="e.g. 15 days" value={draft.leadTime} onChange={(e) => updateDraft(rfq, "leadTime", e.target.value)} /></label>
               <label><span className="mb-1 block text-sm font-bold">Shipping terms</span><select className="w-full rounded-lg border bg-white p-3" value={draft.shippingTerms} onChange={(e) => updateDraft(rfq, "shippingTerms", e.target.value)}><option>EXW</option><option>FOB</option><option>CIF</option><option>DDP</option><option>Other</option></select></label>
               <label><span className="mb-1 block text-sm font-bold">Supplier notes</span><input className="w-full rounded-lg border p-3" placeholder="Packaging, warranty, validity..." value={draft.notes} onChange={(e) => updateDraft(rfq, "notes", e.target.value)} /></label>
             </div>
-            <button disabled={saving === rfq._id || rfq.status === "Closed"} onClick={() => submit(rfq)} className="mt-5 rounded-xl bg-blue-950 px-5 py-3 font-bold text-white disabled:opacity-50">{rfq.status === "Responded" ? "Update confidential offer" : "Submit confidential offer"}</button>
+            <button disabled={saving === rfq._id || ["Selected", "Closed"].includes(rfq.status)} onClick={() => submit(rfq)} className="mt-5 rounded-xl bg-blue-950 px-5 py-3 font-bold text-white disabled:opacity-50">{rfq.status === "Responded" ? "Update confidential offer" : rfq.status === "Selected" ? "Offer selected by Afrilink" : "Submit confidential offer"}</button>
           </article>;
         })}</div>}
       </div>

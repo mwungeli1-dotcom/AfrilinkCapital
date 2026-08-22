@@ -23,11 +23,32 @@ export default function QuotePage() {
   const [notes, setNotes] = useState("");
   const [status, setStatus] = useState<"Draft" | "Sent">("Draft");
   const [saving, setSaving] = useState(false);
+  const [sourceRfqId, setSourceRfqId] = useState("");
+  const [sourceLabel, setSourceLabel] = useState("");
 
   useEffect(() => {
     apiFetch(`/requests/${requestId}`)
       .then((data) => setRequest(data.request || data))
       .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to load request"));
+
+    const rfqId = new URLSearchParams(window.location.search).get("rfq");
+    if (rfqId) {
+      apiFetch(`/admin/supplier-rfqs/${rfqId}`)
+        .then((data) => {
+          const rfq = data.rfq;
+          if (String(rfq.requestId?._id || rfq.requestId) !== requestId || rfq.status !== "Responded" || !rfq.totalPrice) {
+            throw new Error("This supplier offer cannot be selected");
+          }
+          setSourceRfqId(rfq._id);
+          setSourceLabel(`${rfq.supplierId?.companyName || rfq.supplierId?.name} — ${rfq.currency} ${Number(rfq.totalPrice).toLocaleString()}`);
+          setSupplierName(rfq.supplierId?.companyName || rfq.supplierId?.name || "");
+          setSupplierEmail(rfq.supplierId?.email || "");
+          setCurrency(rfq.currency);
+          setDeliveryTime(rfq.leadTime || "");
+          setAmounts((current) => ({ ...current, supplierCost: String(rfq.totalPrice), markupAmount: String(Math.round(Number(rfq.totalPrice) * 0.2 * 100) / 100) }));
+        })
+        .catch((error) => toast.error(error instanceof Error ? error.message : "Failed to load supplier offer"));
+    }
   }, [requestId]);
 
   const total = useMemo(
@@ -55,7 +76,7 @@ export default function QuotePage() {
         method: "POST",
         body: JSON.stringify({
           requestId, supplierName, supplierEmail, currency, ...amounts,
-          deliveryTime, validityDays: Number(validityDays), terms, notes, status,
+          deliveryTime, validityDays: Number(validityDays), terms, notes, status, sourceRfqId: sourceRfqId || undefined,
         }),
       });
       toast.success(status === "Sent" ? "Quotation saved and marked ready" : "Draft quotation saved");
@@ -88,7 +109,7 @@ export default function QuotePage() {
           <a href={`/requests/${requestId}`} className="rounded-lg bg-white px-4 py-2 shadow">Back to request</a>
         </div>
 
-        {request && <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5"><p className="text-sm font-semibold text-blue-700">BUYER REQUEST</p><h2 className="text-xl font-bold text-blue-950">{request.title}</h2><p>{request.customerName || "Legacy customer"} · {request.quantity || "Quantity not specified"} · {request.deliveryLocation || request.country}</p></div>}
+        {request && <div className="mb-6 rounded-2xl border border-blue-100 bg-blue-50 p-5"><p className="text-sm font-semibold text-blue-700">BUYER REQUEST</p><h2 className="text-xl font-bold text-blue-950">{request.title}</h2><p>{request.customerName || "Legacy customer"} · {request.quantity || "Quantity not specified"} · {request.deliveryLocation || request.country}</p>{sourceLabel && <p className="mt-3 rounded-lg bg-green-100 p-3 font-semibold text-green-900">Selected confidential offer: {sourceLabel}. A 20% Afrilink markup has been prefilled for review.</p>}</div>}
 
         <form onSubmit={handleSubmit} className="grid gap-6 lg:grid-cols-[1fr_360px]">
           <div className="space-y-6">
