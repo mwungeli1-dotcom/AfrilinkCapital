@@ -20,10 +20,13 @@ type AdminOverview = {
   catalogueCommissions: Array<{ currency: string; commission: number }>;
 };
 
+type OnlinePresence = { total: number; signedIn: number; guests: number; buyers: number; suppliers: number; pages: Array<{ page: string; count: number }>; updatedAt: string };
+
 export default function DashboardPage() {
   const [token, setToken] = useState<string | null>(null);
   const [user, setUser] = useState<DashboardUser | null>(null);
   const [overview, setOverview] = useState<AdminOverview | null>(null);
+  const [presence, setPresence] = useState<OnlinePresence | null>(null);
 
   useEffect(() => {
     const savedToken = localStorage.getItem("token");
@@ -60,6 +63,14 @@ export default function DashboardPage() {
         setTimeout(() => { window.location.href = "/login"; }, 1000);
       });
   }, []);
+
+  useEffect(() => {
+    if (!user || !["admin", "super_admin"].includes(user.role || "")) return;
+    const loadPresence = () => apiFetch("/admin/online-visitors").then((data) => setPresence(data.presence)).catch(() => undefined);
+    loadPresence();
+    const interval = window.setInterval(loadPresence, 15000);
+    return () => window.clearInterval(interval);
+  }, [user]);
 
   function handleLogout() {
     localStorage.removeItem("token");
@@ -99,8 +110,9 @@ export default function DashboardPage() {
 
             {overview && (
               <section className="mb-5">
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
                   {[
+                    ["Online now", presence?.total ?? 0],
                     ["Buyer requests", overview.requestCount],
                     ["Active orders", overview.activeOrders],
                     ["Supplier approvals", overview.pendingSuppliers],
@@ -109,6 +121,8 @@ export default function DashboardPage() {
                     <div key={label} className="rounded-lg border bg-white p-4 shadow-sm"><p className="text-xs font-semibold text-gray-500">{label}</p><p className="mt-2 text-2xl font-black text-slate-950">{value}</p></div>
                   ))}
                 </div>
+
+                {presence && <div className="mt-4 grid gap-4 rounded-lg border border-green-200 bg-green-50 p-4 lg:grid-cols-[1fr_1.4fr]"><div><div className="flex items-center gap-2"><span className="h-2.5 w-2.5 animate-pulse rounded-full bg-green-500" /><h3 className="text-sm font-black text-green-950">Live website visitors</h3></div><div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded bg-white p-3"><p className="text-slate-500">Guests</p><p className="mt-1 text-xl font-black">{presence.guests}</p></div><div className="rounded bg-white p-3"><p className="text-slate-500">Signed in</p><p className="mt-1 text-xl font-black">{presence.signedIn}</p></div><div className="rounded bg-white p-3"><p className="text-slate-500">Buyers</p><p className="mt-1 text-xl font-black">{presence.buyers}</p></div><div className="rounded bg-white p-3"><p className="text-slate-500">Suppliers</p><p className="mt-1 text-xl font-black">{presence.suppliers}</p></div></div></div><div><p className="text-xs font-black text-green-950">Pages being viewed now</p><div className="mt-3 space-y-2">{presence.pages.length ? presence.pages.map((item) => <div key={item.page} className="flex items-center justify-between rounded bg-white px-3 py-2 text-xs"><span className="max-w-[80%] truncate font-semibold">{item.page === "/" ? "Homepage" : item.page}</span><span className="rounded-full bg-green-100 px-2 py-0.5 font-black text-green-800">{item.count}</span></div>) : <p className="text-xs text-slate-500">Waiting for visitor activity...</p>}</div><p className="mt-3 text-[10px] text-slate-500">Refreshes automatically every 15 seconds. A visitor is considered online for 90 seconds after their last activity.</p></div></div>}
 
                 {overview.financials.length > 0 && (
                   <div className="mt-4 grid gap-4 lg:grid-cols-2">

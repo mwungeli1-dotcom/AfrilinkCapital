@@ -6,6 +6,7 @@ import "./globals.css";
 import Header from "../components/Header";
 import Footer from "../components/Footer";
 import MobileNav from "@/components/MobileNav";
+import SitePresence from "@/components/SitePresence";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -46,6 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col pb-20 md:pb-0">
   <Header />
+  <SitePresence />
   <Toaster />
   <main className="flex-1">{children}</main>
   <Footer />
