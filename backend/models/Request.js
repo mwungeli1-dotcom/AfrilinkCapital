@@ -8,6 +8,12 @@ const RequestSchema = new mongoose.Schema(
       index: true,
     },
 
+    productId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Product",
+      index: true,
+    },
+
     customerName: {
       type: String,
       trim: true,

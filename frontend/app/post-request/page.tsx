@@ -25,12 +25,14 @@ export default function PostRequestPage() {
   const [country, setCountry] = useState("");
   const [requests, setRequests] = useState<RequestItem[]>([]);
   const [supplierBlocked, setSupplierBlocked] = useState(false);
+  const [productId, setProductId] = useState("");
 
   useEffect(() => {
     const savedUser = localStorage.getItem("user");
     if (savedUser) {
       try {
-        if (JSON.parse(savedUser)?.role === "supplier") {
+        const currentUser = JSON.parse(savedUser);
+        if (currentUser?.role === "supplier") {
           // This blocks supplier accounts from entering the buyer quotation flow.
           // eslint-disable-next-line react-hooks/set-state-in-effect
           setSupplierBlocked(true);
@@ -38,12 +40,17 @@ export default function PostRequestPage() {
           setTimeout(() => { window.location.href = "/dashboard"; }, 900);
           return;
         }
+        setCustomerName(currentUser?.name || "");
+        setEmail(currentUser?.email || "");
+        setPhone(currentUser?.phone || "");
+        setCountry(currentUser?.country || "");
       } catch {
         // Ignore malformed local account data and continue as a visitor.
       }
     }
     const params = new URLSearchParams(window.location.search);
     const productName = params.get("product");
+    setProductId(params.get("productId") || "");
 
     if (productName) {
       // This effect synchronizes the form with a product selected on another page.
@@ -82,6 +89,7 @@ export default function PostRequestPage() {
     description,
     quantity,
     country,
+    productId: productId || undefined,
   };
 
   try {
@@ -110,9 +118,8 @@ export default function PostRequestPage() {
     setEmail("");
     setDeliveryLocation("");
 
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 1000);
+    const isLoggedIn = Boolean(localStorage.getItem("token"));
+    setTimeout(() => { window.location.href = isLoggedIn ? "/my-requests" : "/"; }, 1000);
   } catch (error) {
     console.error(error);
     toast.error("Something went wrong. Please try again.");

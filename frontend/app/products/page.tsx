@@ -15,6 +15,11 @@ type Product = {
   origin: string;
   description?: string;
   image?: string;
+  publicPrice?: number;
+  currency?: "USD" | "ZMW";
+  views?: number;
+  requestCount?: number;
+  createdAt?: string;
 };
 
 export default function ProductsPage() {
@@ -23,6 +28,8 @@ export default function ProductsPage() {
   const [error, setError] = useState(false);
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [origin, setOrigin] = useState("all");
+  const [sort, setSort] = useState("newest");
 
   useEffect(() => {
     async function fetchProducts() {
@@ -51,10 +58,12 @@ export default function ProductsPage() {
     [products]
   );
 
+  const origins = useMemo(() => Array.from(new Set(products.map((product) => product.origin?.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)), [products]);
+
   const filteredProducts = useMemo(() => {
     const query = search.trim().toLowerCase();
 
-    return products.filter((product) => {
+    const matches = products.filter((product) => {
       const matchesCategory =
         category === "all" || product.category.toLowerCase() === category.toLowerCase();
       const matchesSearch =
@@ -63,9 +72,17 @@ export default function ProductsPage() {
           .filter(Boolean)
           .some((value) => value?.toLowerCase().includes(query));
 
-      return matchesCategory && matchesSearch;
+      const matchesOrigin = origin === "all" || product.origin.toLowerCase() === origin.toLowerCase();
+      return matchesCategory && matchesSearch && matchesOrigin;
     });
-  }, [category, products, search]);
+
+    return matches.sort((a, b) => {
+      if (sort === "popular") return ((b.requestCount || 0) * 10 + (b.views || 0)) - ((a.requestCount || 0) * 10 + (a.views || 0));
+      if (sort === "price-low") return (a.publicPrice || Number.MAX_SAFE_INTEGER) - (b.publicPrice || Number.MAX_SAFE_INTEGER);
+      if (sort === "price-high") return (b.publicPrice || 0) - (a.publicPrice || 0);
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
+    });
+  }, [category, origin, products, search, sort]);
 
   if (loading) {
     return (
@@ -84,17 +101,14 @@ export default function ProductsPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-100 p-8">
-      <h1 className="text-4xl font-bold text-blue-900 mb-2">
-        Product Showroom
-      </h1>
-
-      <p className="text-gray-600 mb-8">
-        Browse products available through Afrilink Capital procurement.
-      </p>
+    <main className="min-h-screen bg-slate-100 px-3 py-8 md:px-8 md:py-12">
+      <div className="mx-auto max-w-7xl">
+      <p className="text-sm font-bold uppercase tracking-[0.15em] text-yellow-600">Afrilink marketplace</p>
+      <h1 className="mt-1 text-3xl font-black text-blue-950 md:text-4xl">Products for African businesses</h1>
+      <p className="mb-8 mt-2 text-slate-600">Search approved products and request one official quotation through Afrilink.</p>
 
       {!error && products.length > 0 && (
-        <div className="mb-8 grid gap-4 rounded-2xl bg-white p-5 shadow-sm md:grid-cols-[1fr_260px]">
+        <div className="mb-6 grid gap-4 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-[1fr_220px_180px_190px] md:p-5">
           <div>
             <label htmlFor="product-search" className="mb-2 block text-sm font-semibold text-blue-950">
               Search the showroom
@@ -127,6 +141,8 @@ export default function ProductsPage() {
               ))}
             </select>
           </div>
+          <div><label htmlFor="product-origin" className="mb-2 block text-sm font-semibold text-blue-950">Origin</label><select id="product-origin" value={origin} onChange={(event) => setOrigin(event.target.value)} className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3"><option value="all">All origins</option>{origins.map((item) => <option key={item}>{item}</option>)}</select></div>
+          <div><label htmlFor="product-sort" className="mb-2 block text-sm font-semibold text-blue-950">Sort by</label><select id="product-sort" value={sort} onChange={(event) => setSort(event.target.value)} className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3"><option value="newest">Newest</option><option value="popular">Most popular</option><option value="price-low">Price: low to high</option><option value="price-high">Price: high to low</option></select></div>
         </div>
       )}
 
@@ -167,6 +183,7 @@ export default function ProductsPage() {
             onClick={() => {
               setSearch("");
               setCategory("all");
+              setOrigin("all");
             }}
             className="mt-5 rounded-xl border border-blue-950 px-5 py-2 font-semibold text-blue-950"
           >
@@ -175,56 +192,42 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {!error && <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      {!error && products.length > 0 && <div className="mb-4 flex items-center justify-between"><p className="text-sm font-semibold text-slate-600">{filteredProducts.length} products found</p><BuyerOnly><Link href="/post-request" className="text-sm font-bold text-blue-800 hover:underline">Can&apos;t find it? Request sourcing →</Link></BuyerOnly></div>}
+
+      {!error && <div className="grid grid-cols-2 gap-3 md:grid-cols-3 md:gap-5 lg:grid-cols-4">
         {filteredProducts.map((product) => (
-          <div key={product._id} className="bg-white rounded-lg shadow p-5">
-            <div className="relative h-40 bg-gray-200 rounded mb-4 flex items-center justify-center overflow-hidden">
+          <Link href={`/products/${product._id}`} key={product._id} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:border-yellow-400 hover:shadow-xl">
+            <div className="relative aspect-square bg-slate-100 flex items-center justify-center overflow-hidden">
               {product.image ? (
                 <Image
                   unoptimized
                   fill
-                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                  sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
                   src={product.image}
                   alt={product.name}
-                  className="object-cover"
+                  className="object-cover transition duration-300 group-hover:scale-105"
                 />
               ) : (
                 <span className="text-gray-500">Product Image</span>
               )}
+              <span className="absolute left-2 top-2 rounded-full bg-white/95 px-2 py-1 text-[9px] font-black text-green-700 shadow">✓ REVIEWED</span>
             </div>
 
-            <p className="text-sm text-blue-700 font-semibold">
+            <div className="p-3 md:p-4"><p className="text-xs text-blue-700 font-semibold">
               {product.category}
             </p>
 
-            <h2 className="text-lg font-bold mt-2 mb-2">
+            <h2 className="mt-2 line-clamp-2 min-h-10 text-sm font-bold leading-snug md:text-base">
               {product.name}
             </h2>
 
-            <p className="text-gray-700">{product.price}</p>
-
-            <p className="text-gray-500 text-sm">
-              Delivery: {product.delivery}
-            </p>
-
-            <p className="text-gray-500 text-sm">
-              Origin: {product.origin}
-            </p>
-
-            <p className="text-xs text-gray-500 mt-3">
-              Afrilink Capital manages sourcing, negotiation, importation and
-              delivery.
-            </p>
-
-            <Link
-              href={`/products/${product._id}`}
-              className="block text-center mt-4 bg-blue-900 text-white py-2 rounded hover:bg-yellow-400 hover:text-black transition"
-            >
-              View Product
-            </Link>
-          </div>
+            <p className="mt-2 text-lg font-black text-blue-950 md:text-xl">{product.price || "Request price"}</p>
+            <p className="mt-1 text-xs text-slate-500">{product.origin || "Global supply"} • {product.delivery || "Delivery quoted"}</p>
+            <div className="mt-3 flex items-center justify-between text-[10px] text-slate-500"><span>{product.views || 0} views</span><span className="font-bold text-blue-800">View details →</span></div></div>
+          </Link>
         ))}
       </div>}
+      </div>
     </main>
   );
 }
