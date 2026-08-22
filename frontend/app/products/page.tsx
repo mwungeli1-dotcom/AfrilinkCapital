@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { apiFetch } from "@/src/lib/api";
 import BuyerOnly from "@/components/BuyerOnly";
 
@@ -26,6 +27,9 @@ export default function ProductsPage() {
   useEffect(() => {
     async function fetchProducts() {
       try {
+        const params = new URLSearchParams(window.location.search);
+        setSearch(params.get("search") || "");
+        setCategory(params.get("category") || "all");
         const data = await apiFetch("/products");
         setProducts(data.products || []);
       } catch (error) {
@@ -174,12 +178,15 @@ export default function ProductsPage() {
       {!error && <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         {filteredProducts.map((product) => (
           <div key={product._id} className="bg-white rounded-lg shadow p-5">
-            <div className="h-40 bg-gray-200 rounded mb-4 flex items-center justify-center overflow-hidden">
+            <div className="relative h-40 bg-gray-200 rounded mb-4 flex items-center justify-center overflow-hidden">
               {product.image ? (
-                <img
+                <Image
+                  unoptimized
+                  fill
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
                   src={product.image}
                   alt={product.name}
-                  className="w-full h-full object-cover"
+                  className="object-cover"
                 />
               ) : (
                 <span className="text-gray-500">Product Image</span>
