@@ -154,6 +154,8 @@ export default function AdminProductsPage() {
             <div className="flex gap-4">
               <div className="w-24 h-24 bg-gray-200 rounded-lg overflow-hidden flex items-center justify-center">
                 {product.image ? (
+                  // Supplier images use externally hosted URLs that are not known at build time.
+                  // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={product.image}
                     alt={product.name}
@@ -194,7 +196,7 @@ export default function AdminProductsPage() {
                 <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${product.status === "Approved" ? "bg-green-100 text-green-800" : product.status === "Rejected" ? "bg-red-100 text-red-800" : "bg-yellow-100 text-yellow-800"}`}>
                   {product.status || "Approved"}
                 </span>
-                {role === "admin" && typeof product.supplierId === "object" && (
+                {["admin", "super_admin"].includes(role) && typeof product.supplierId === "object" && (
                   <p className="mt-2 text-sm text-gray-600">Supplier: {product.supplierId?.name || product.supplierId?.email || "Afrilink"}</p>
                 )}
                 {product.rejectionReason && <p className="mt-2 text-sm text-red-700">Revision: {product.rejectionReason}</p>}
@@ -202,10 +204,10 @@ export default function AdminProductsPage() {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {role === "admin" && product.status !== "Approved" && (
+              {["admin", "super_admin"].includes(role) && product.status !== "Approved" && (
                 <button onClick={() => reviewProduct(product._id, "Approved")} className="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700">Approve</button>
               )}
-              {role === "admin" && product.status !== "Rejected" && (
+              {["admin", "super_admin"].includes(role) && product.status !== "Rejected" && (
                 <button onClick={() => reviewProduct(product._id, "Rejected")} className="rounded-lg bg-orange-600 px-4 py-2 text-white hover:bg-orange-700">Request Revision</button>
               )}
               <Link
