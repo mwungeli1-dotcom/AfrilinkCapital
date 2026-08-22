@@ -26,7 +26,7 @@ function removePassword(user) {
   return cleanUser;
 }
 
-function authMiddleware(req, res, next) {
+async function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -38,19 +38,27 @@ function authMiddleware(req, res, next) {
 
   const token = authHeader.split(" ")[1];
 
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (error) {
     return res.status(401).json({
       success: false,
       message: "Invalid or expired token",
     });
   }
+
+  try {
+    const user = await User.findById(decoded.id).select("role");
+    if (!user) return res.status(401).json({ success: false, message: "Account no longer exists" });
+    req.user = { id: user._id.toString(), role: user.role };
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to verify account" });
+  }
 }
 
-function optionalAuthMiddleware(req, res, next) {
+async function optionalAuthMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
 
   if (!authHeader) return next();
@@ -58,11 +66,20 @@ function optionalAuthMiddleware(req, res, next) {
     return res.status(401).json({ success: false, message: "Invalid authorization header" });
   }
 
+  let decoded;
   try {
-    req.user = jwt.verify(authHeader.split(" ")[1], JWT_SECRET);
-    next();
+    decoded = jwt.verify(authHeader.split(" ")[1], JWT_SECRET);
   } catch (error) {
     return res.status(401).json({ success: false, message: "Invalid or expired token" });
+  }
+
+  try {
+    const user = await User.findById(decoded.id).select("role");
+    if (!user) return res.status(401).json({ success: false, message: "Account no longer exists" });
+    req.user = { id: user._id.toString(), role: user.role };
+    next();
+  } catch (error) {
+    return res.status(500).json({ success: false, message: "Failed to verify account" });
   }
 }
 
@@ -105,6 +122,9 @@ app.get("/", (req, res) => {
 // REQUESTS
 app.post("/requests", optionalAuthMiddleware, async (req, res) => {
   try {
+    if (req.user?.role === "supplier") {
+      return res.status(403).json({ success: false, message: "Supplier accounts cannot submit buyer quotation requests" });
+    }
     const requiredFields = [
       "customerName",
       "phone",
@@ -651,7 +671,6 @@ app.post("/login", async (req, res) => {
     const token = jwt.sign(
       {
         id: user._id,
-        role: user.role,
       },
       JWT_SECRET,
       {
@@ -882,7 +901,7 @@ app.put("/supplier-applications/:id/approve", authMiddleware, adminOnly, async (
     await notifyUser(application.userId, {
       type: "approval",
       title: "Supplier account approved",
-      message: "Your Afrilink supplier account is approved. Sign out and log back in to activate product listing and private sourcing access.",
+      message: "Your Afrilink supplier account is approved. Product listing and private sourcing access are now active.",
       href: "/dashboard",
     });
 
