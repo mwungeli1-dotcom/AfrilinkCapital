@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import BuyerOnly from "./BuyerOnly";
+import { apiFetch } from "@/src/lib/api";
 
 export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [profile, setProfile] = useState<{ name: string; avatar?: string }>({ name: "Account" });
   const [{ isLoggedIn, isAdmin, role }, setAuthState] = useState({
     isLoggedIn: false,
@@ -35,6 +37,13 @@ export default function Header() {
 
       setAuthState({ isLoggedIn: !!token, isAdmin: savedUserIsAdmin, role: savedRole });
       setProfile(savedProfile);
+      if (token) {
+        apiFetch("/notifications")
+          .then((data) => setUnreadCount(data.unreadCount || 0))
+          .catch(() => setUnreadCount(0));
+      } else {
+        setUnreadCount(0);
+      }
     }
 
     // This effect synchronizes navigation with the browser's persisted session.
@@ -111,6 +120,11 @@ export default function Header() {
                 </Link>
               </>
             )}
+
+            <Link href="/notifications" onClick={() => setMenuOpen(false)} className="relative flex items-center rounded-full border border-blue-700 bg-blue-900 px-3 py-2 hover:border-yellow-400" aria-label={`${unreadCount} unread notifications`}>
+              <span aria-hidden="true">🔔</span>
+              {unreadCount > 0 && <span className="absolute -right-2 -top-2 min-w-5 rounded-full bg-red-600 px-1.5 text-center text-xs font-bold text-white">{unreadCount > 99 ? "99+" : unreadCount}</span>}
+            </Link>
 
             <div className="relative">
               <button type="button" onClick={() => setProfileOpen((open) => !open)} className="flex items-center gap-2 rounded-full border border-blue-700 bg-blue-900 py-1 pl-1 pr-3 hover:border-yellow-400" aria-expanded={profileOpen}>
