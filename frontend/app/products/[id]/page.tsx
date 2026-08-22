@@ -3,7 +3,7 @@ import Link from "next/link";
 import BuyerOnly from "@/components/BuyerOnly";
 import SaveProductButton from "@/components/SaveProductButton";
 
-type Product = { _id: string; name: string; category: string; price: string; delivery: string; origin: string; description?: string; image?: string; video?: string; views?: number; requestCount?: number };
+type Product = { _id: string; name: string; category: string; price: string; delivery: string; origin: string; description?: string; image?: string; images?: string[]; video?: string; views?: number; requestCount?: number };
 
 export default async function ProductDetailsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -15,6 +15,7 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
 
   const requestHref = `/post-request?productId=${encodeURIComponent(product._id)}&product=${encodeURIComponent(product.name)}`;
   const whatsappMessage = encodeURIComponent(`Hello Afrilink Capital, I am interested in ${product.name} (${product.price || "price request"}).`);
+  const productImages = product.images?.length ? product.images : product.image ? [product.image] : [];
 
   return (
     <main className="min-h-screen bg-slate-100 px-4 py-6 md:px-6 md:py-10">
@@ -22,7 +23,8 @@ export default async function ProductDetailsPage({ params }: { params: Promise<{
         <div className="mb-5 flex items-center gap-2 overflow-x-auto text-sm text-slate-500"><Link href="/" className="hover:text-blue-800">Home</Link><span>/</span><Link href={`/products?category=${encodeURIComponent(product.category)}`} className="hover:text-blue-800">{product.category}</Link><span>/</span><span className="max-w-72 truncate text-slate-800">{product.name}</span></div>
         <section className="grid gap-7 rounded-3xl bg-white p-4 shadow-sm md:p-7 lg:grid-cols-[1.05fr_1fr]">
           <div>
-            <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100">{product.image ? <Image unoptimized fill preload sizes="(max-width: 1024px) 100vw, 50vw" src={product.image} alt={product.name} className="object-contain" /> : <div className="flex h-full items-center justify-center text-7xl text-slate-300">▦</div>}</div>
+            <div className="relative aspect-square overflow-hidden rounded-2xl bg-slate-100">{productImages[0] ? <Image unoptimized fill preload sizes="(max-width: 1024px) 100vw, 50vw" src={productImages[0]} alt={product.name} className="object-contain" /> : <div className="flex h-full items-center justify-center text-7xl text-slate-300">▦</div>}</div>
+            {productImages.length > 1 && <div className="mt-3 grid grid-cols-3 gap-3">{productImages.slice(1).map((url, index) => <div key={url} className="relative aspect-square overflow-hidden rounded-xl border bg-slate-50"><Image unoptimized fill sizes="(max-width: 1024px) 33vw, 16vw" src={url} alt={`${product.name} picture ${index + 2}`} className="object-contain" /></div>)}</div>}
             {product.video && <div className="mt-4"><video src={product.video} controls className="w-full rounded-2xl bg-black" /></div>}
           </div>
           <div className="flex flex-col">
