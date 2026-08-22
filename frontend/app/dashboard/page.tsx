@@ -162,6 +162,11 @@ export default function DashboardPage() {
                 <h3 className="text-xl font-bold text-blue-950">Become a Supplier</h3>
                 <p className="mt-2 text-sm text-gray-600">Submit your company for Afrilink verification and unlock product listing after approval.</p>
               </Link>
+
+              <Link href="/saved-products" className="bg-white border p-6 rounded-2xl shadow hover:shadow-lg transition">
+                <h3 className="text-xl font-bold text-blue-950">Saved Products</h3>
+                <p className="mt-2 text-sm text-gray-600">Return to products you shortlisted for later sourcing.</p>
+              </Link>
             </div>
           </>
         )}
