@@ -377,6 +377,11 @@ function calculateProductPricing(rawPrice, rawCurrency) {
   return { supplierPrice, publicPrice, markupPercent, currency, price };
 }
 
+function normalizeProductImages(rawImages, legacyImage = "") {
+  const candidates = Array.isArray(rawImages) ? rawImages : legacyImage ? [legacyImage] : [];
+  return [...new Set(candidates.map((item) => String(item || "").trim()).filter(Boolean))];
+}
+
 app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
   try {
     const requiredFields = ["name", "category", "description", "supplierPrice", "origin", "delivery"];
@@ -389,6 +394,8 @@ app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
     }
     const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency);
     if (!pricing) return res.status(400).json({ success: false, message: "Enter a valid supplier price greater than zero" });
+    const images = normalizeProductImages(req.body.images, req.body.image);
+    if (images.length > 4) return res.status(400).json({ success: false, message: "Upload no more than 4 product images" });
     const isAdmin = ["admin", "super_admin"].includes(req.user.role);
     const product = await Product.create({
       name: req.body.name,
@@ -397,7 +404,8 @@ app.post("/products", authMiddleware, supplierOrAdmin, async (req, res) => {
       ...pricing,
       origin: req.body.origin,
       delivery: req.body.delivery,
-      image: req.body.image,
+      image: images[0] || "",
+      images,
       video: req.body.video,
       supplierId: req.user.id,
       status: isAdmin ? "Approved" : "Pending",
@@ -501,7 +509,7 @@ app.get("/saved-products", authMiddleware, async (req, res) => {
       .populate({
         path: "productId",
         match: { isActive: { $ne: false }, $or: [{ status: "Approved" }, { status: { $exists: false } }] },
-        select: "name category description price publicPrice currency origin delivery image views requestCount createdAt",
+        select: "name category description price publicPrice currency origin delivery image images views requestCount createdAt",
       })
       .sort({ createdAt: -1 });
     const available = saved.filter((item) => item.productId);
@@ -555,6 +563,8 @@ app.put("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
 
     const pricing = calculateProductPricing(req.body.supplierPrice, req.body.currency || product.currency);
     if (!pricing) return res.status(400).json({ success: false, message: "Enter a valid supplier price greater than zero" });
+    const images = normalizeProductImages(req.body.images, req.body.image);
+    if (images.length > 4) return res.status(400).json({ success: false, message: "Upload no more than 4 product images" });
 
     const updatedProduct = await Product.findByIdAndUpdate(
       req.params.id,
@@ -565,7 +575,8 @@ app.put("/products/:id", authMiddleware, supplierOrAdmin, async (req, res) => {
         delivery: req.body.delivery,
         origin: req.body.origin,
         description: req.body.description,
-        image: req.body.image,
+        image: images[0] || "",
+        images,
         video: req.body.video,
         status: isAdmin ? (req.body.status || product.status) : "Pending",
         rejectionReason: isAdmin ? (req.body.rejectionReason || "") : "",
