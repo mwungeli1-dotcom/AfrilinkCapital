@@ -146,8 +146,19 @@ app.post("/requests", optionalAuthMiddleware, async (req, res) => {
       });
     }
 
+    let linkedProduct = null;
+    if (req.body.productId) {
+      linkedProduct = await Product.findOne({
+        _id: req.body.productId,
+        isActive: { $ne: false },
+        $or: [{ status: "Approved" }, { status: { $exists: false } }],
+      });
+      if (!linkedProduct) return res.status(400).json({ success: false, message: "Selected product is no longer available" });
+    }
+
     const newRequest = new Request({
       userId: req.user?.id,
+      productId: linkedProduct?._id,
       customerName: req.body.customerName,
       phone: req.body.phone,
       email: req.body.email,
@@ -160,6 +171,7 @@ app.post("/requests", optionalAuthMiddleware, async (req, res) => {
     });
 
     const savedRequest = await newRequest.save();
+    if (linkedProduct) await Product.findByIdAndUpdate(linkedProduct._id, { $inc: { requestCount: 1 } });
 
     res.json({
       success: true,
@@ -451,11 +463,15 @@ app.get("/manage/products/:id", authMiddleware, supplierOrAdmin, async (req, res
 
 app.get("/products/:id", async (req, res) => {
   try {
-    const product = await Product.findOne({
-      _id: req.params.id,
-      isActive: { $ne: false },
-      $or: [{ status: "Approved" }, { status: { $exists: false } }],
-    }).select("-supplierId -supplierPrice -markupPercent");
+    const product = await Product.findOneAndUpdate(
+      {
+        _id: req.params.id,
+        isActive: { $ne: false },
+        $or: [{ status: "Approved" }, { status: { $exists: false } }],
+      },
+      { $inc: { views: 1 } },
+      { new: true }
+    ).select("-supplierId -supplierPrice -markupPercent");
 
     if (!product) {
       return res.status(404).json({
