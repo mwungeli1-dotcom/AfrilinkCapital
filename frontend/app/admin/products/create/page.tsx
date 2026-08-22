@@ -14,7 +14,7 @@ export default function CreateProductPage() {
   const [delivery, setDelivery] = useState("");
   const [origin, setOrigin] = useState("");
   const [description, setDescription] = useState("");
-  const [image, setImage] = useState("");
+  const [images, setImages] = useState<string[]>([]);
   const [video, setVideo] = useState("");
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
@@ -61,16 +61,19 @@ export default function CreateProductPage() {
   }
 
   async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
+    const remainingSlots = 4 - images.length;
+    if (remainingSlots <= 0) return toast.error("A product can have up to 4 pictures");
+    const selectedFiles = files.slice(0, remainingSlots);
+    if (files.length > remainingSlots) toast.error(`Only ${remainingSlots} more picture${remainingSlots === 1 ? "" : "s"} allowed`);
 
     try {
       setUploadingImage(true);
-      const url = await uploadToCloudinary(file, "image");
-
-      if (url) {
-        setImage(url);
-        toast.success("Image uploaded successfully");
+      const urls = (await Promise.all(selectedFiles.map((file) => uploadToCloudinary(file, "image")))).filter(Boolean);
+      if (urls.length) {
+        setImages((current) => [...current, ...urls].slice(0, 4));
+        toast.success(`${urls.length} picture${urls.length === 1 ? "" : "s"} uploaded`);
       }
     } catch (error) {
       console.error(error);
@@ -126,7 +129,8 @@ export default function CreateProductPage() {
           delivery,
           origin,
           description,
-          image,
+          image: images[0] || "",
+          images,
           video,
         }),
       });
@@ -144,7 +148,7 @@ export default function CreateProductPage() {
       setDelivery("");
       setOrigin("");
       setDescription("");
-      setImage("");
+      setImages([]);
       setVideo("");
 
       setTimeout(() => {
@@ -226,21 +230,19 @@ export default function CreateProductPage() {
             <input
               type="file"
               accept="image/*"
+              multiple
+              disabled={uploadingImage || images.length >= 4}
               onChange={handleImageUpload}
               className="w-full"
             />
+
+            <p className="mt-2 text-sm text-gray-600">Upload up to 4 pictures. The first picture is the main catalogue image. ({images.length}/4)</p>
 
             {uploadingImage && (
               <p className="text-sm text-blue-700 mt-2">Uploading image...</p>
             )}
 
-            {image && (
-              <img
-                src={image}
-                alt="Product preview"
-                className="mt-4 w-full max-h-64 object-cover rounded-xl"
-              />
-            )}
+            {images.length > 0 && <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">{images.map((url, index) => <div key={url} className="relative overflow-hidden rounded-xl border bg-gray-50"><img src={url} alt={`Product preview ${index + 1}`} className="aspect-square w-full object-cover" /><button type="button" onClick={() => setImages((current) => current.filter((item) => item !== url))} className="absolute right-1 top-1 rounded-full bg-red-600 px-2 py-1 text-xs font-bold text-white" aria-label={`Remove picture ${index + 1}`}>×</button>{index === 0 && <span className="absolute bottom-1 left-1 rounded bg-blue-950 px-2 py-1 text-[10px] font-bold text-white">Main</span>}</div>)}</div>}
           </div>
 
           <div className="border rounded-xl p-4">
