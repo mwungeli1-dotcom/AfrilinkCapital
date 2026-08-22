@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+const PRODUCT_CATEGORIES = require("../config/productCategories");
 
 const ProductSchema = new mongoose.Schema(
   {
@@ -19,6 +20,7 @@ const ProductSchema = new mongoose.Schema(
     category: {
       type: String,
       required: true,
+      enum: PRODUCT_CATEGORIES,
     },
 
     description: {

@@ -1,0 +1,21 @@
+const PRODUCT_CATEGORIES = [
+  "Agriculture & Food",
+  "Apparel & Textiles",
+  "Automotive & Transportation",
+  "Beauty & Personal Care",
+  "Building & Construction",
+  "Chemicals & Raw Materials",
+  "Consumer Electronics",
+  "Electrical Equipment",
+  "Energy & Solar",
+  "Home & Garden",
+  "Industrial Machinery",
+  "Medical & Healthcare",
+  "Packaging & Printing",
+  "Security & Safety",
+  "Sports & Entertainment",
+  "Tools & Hardware",
+  "Water Treatment Equipment",
+];
+
+module.exports = PRODUCT_CATEGORIES;
