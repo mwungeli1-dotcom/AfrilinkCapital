@@ -42,17 +42,23 @@ export default function DashboardPage() {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setToken(savedToken);
 
-    const savedUser = localStorage.getItem("user");
-
-    if (savedUser) {
-      const currentUser = JSON.parse(savedUser) as DashboardUser;
-      setUser(currentUser);
-      if (["admin", "super_admin"].includes(currentUser.role || "")) {
-        apiFetch("/admin/overview")
-          .then((data) => setOverview(data.overview))
-          .catch((error) => console.error("Failed to load admin overview", error));
-      }
-    }
+    apiFetch("/profile")
+      .then(async (data) => {
+        const currentUser = data.user as DashboardUser;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+        setUser(currentUser);
+        window.dispatchEvent(new Event("session-refreshed"));
+        if (["admin", "super_admin"].includes(currentUser.role || "")) {
+          const overviewData = await apiFetch("/admin/overview");
+          setOverview(overviewData.overview);
+        }
+      })
+      .catch((error) => {
+        toast.error(error instanceof Error ? error.message : "Session verification failed");
+        localStorage.removeItem("token");
+        localStorage.removeItem("user");
+        setTimeout(() => { window.location.href = "/login"; }, 1000);
+      });
   }, []);
 
   function handleLogout() {
@@ -66,7 +72,7 @@ export default function DashboardPage() {
     }, 1000);
   }
 
-  if (!token) {
+  if (!token || !user) {
     return (
       <main className="min-h-screen flex items-center justify-center">
         Loading dashboard...

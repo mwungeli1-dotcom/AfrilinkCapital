@@ -27,7 +27,7 @@ export default function LoginPage() {
         localStorage.setItem("user", JSON.stringify(data.user));
 
         setTimeout(() => {
-          if (data.user.role === "admin") {
+          if (["admin", "super_admin"].includes(data.user.role)) {
             window.location.href = "/dashboard";
           } else {
             window.location.href = "/";
