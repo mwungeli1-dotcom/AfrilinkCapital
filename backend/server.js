@@ -994,6 +994,50 @@ app.get("/admin/users", authMiddleware, adminOnly, async (req, res) => {
   }
 });
 
+app.get("/admin/users/:id", authMiddleware, adminOnly, async (req, res) => {
+  try {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) return res.status(400).json({ success: false, message: "Invalid user ID" });
+
+    const user = await User.findById(req.params.id)
+      .select("name email role supplierStatus phone country companyName avatar accountStatus suspendedAt suspensionReason createdAt updatedAt")
+      .lean();
+    if (!user) return res.status(404).json({ success: false, message: "User not found" });
+
+    const [requests, products, savedProductCount, supplierApplication, activeSession] = await Promise.all([
+      Request.find({ userId: user._id }).select("title quantity country deliveryLocation status productId createdAt").sort({ createdAt: -1 }).limit(25).lean(),
+      Product.find({ supplierId: user._id }).select("name category publicPrice currency status isActive views requestCount images image createdAt").sort({ createdAt: -1 }).limit(25).lean(),
+      SavedProduct.countDocuments({ userId: user._id }),
+      SupplierApplication.findOne({ userId: user._id }).select("companyName country contactPerson phone website productCategories description status createdAt updatedAt").sort({ createdAt: -1 }).lean(),
+      VisitorSession.findOne({ userId: user._id, lastSeen: { $gte: new Date(Date.now() - 90000) } }).select("path lastSeen").sort({ lastSeen: -1 }).lean(),
+    ]);
+
+    const requestIds = requests.map((request) => request._id);
+    const quotations = requestIds.length
+      ? await Quotation.find({ requestId: { $in: requestIds } }).select("quotationNumber requestId currency totalAmount amountPaid status paymentStatus createdAt").sort({ createdAt: -1 }).limit(25).lean()
+      : [];
+    const financials = Object.values(quotations.reduce((totals, quotation) => {
+      const currency = quotation.currency || "USD";
+      if (!totals[currency]) totals[currency] = { currency, quoted: 0, collected: 0, balance: 0 };
+      totals[currency].quoted += Number(quotation.totalAmount || 0);
+      totals[currency].collected += Number(quotation.amountPaid || 0);
+      totals[currency].balance += Math.max(Number(quotation.totalAmount || 0) - Number(quotation.amountPaid || 0), 0);
+      return totals;
+    }, {}));
+
+    res.json({
+      success: true,
+      user: { ...user, accountStatus: user.accountStatus || "active", online: Boolean(activeSession), currentPage: activeSession?.path || null, lastSeen: activeSession?.lastSeen || null },
+      summary: { requestCount: requests.length, quotationCount: quotations.length, productCount: products.length, savedProductCount, financials },
+      requests,
+      quotations,
+      products,
+      supplierApplication,
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: "Failed to load customer profile", error: error.message });
+  }
+});
+
 app.put("/admin/users/:id/status", authMiddleware, adminOnly, async (req, res) => {
   try {
     if (!["active", "suspended"].includes(req.body.status)) return res.status(400).json({ success: false, message: "Choose active or suspended" });
