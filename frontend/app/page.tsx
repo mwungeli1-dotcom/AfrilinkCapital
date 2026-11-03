@@ -21,7 +21,7 @@ export default function Home() {
   const [savedIds, setSavedIds] = useState<string[]>([]);
 
   useEffect(() => {
-    apiFetch("/products").then((data) => setProducts(data.products || [])).catch((fetchError) => { console.error(fetchError); setError(true); }).finally(() => setLoading(false));
+    apiFetch("/products", { signal: AbortSignal.timeout(20000) }).then((data) => setProducts(data.products || [])).catch((fetchError) => { console.error(fetchError); setError(true); }).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -50,9 +50,19 @@ export default function Home() {
   return <main className="min-h-screen bg-[#f4f4f4] text-slate-950">
     <section className="border-t bg-[#fff8f4] px-4 pb-8 pt-6 lg:pb-10 lg:pt-8">
       <div className="mx-auto max-w-[1440px]">
-        <div className="flex items-center justify-center gap-5 overflow-x-auto text-sm font-black sm:text-base lg:gap-9 lg:text-lg"><span className="whitespace-nowrap">Smart Sourcing<sup className="ml-1 text-orange-500">AI</sup></span><span className="h-5 w-px bg-slate-300" /><span className="border-b-2 border-orange-500 pb-2 text-orange-600">Products</span><Link href="/register?type=supplier" className="whitespace-nowrap hover:text-orange-600">Manufacturers</Link><Link href="/products" className="whitespace-nowrap hover:text-orange-600">Worldwide</Link></div>
+        <div className="mx-auto max-w-4xl">
+          <p className="text-xs font-bold uppercase tracking-widest text-orange-700">Lusaka, Zambia · Sourcing &amp; import support</p>
+          <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight text-blue-950 sm:text-5xl">Equipment for your business. One sourcing partner.</h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">Tell Afrilink what you need. We help source suppliers, prepare your quotation and coordinate procurement through to delivery.</p>
+          <div className="mt-6 flex flex-wrap gap-3">
+            <Link href="/post-request" className="rounded-xl bg-orange-600 px-6 py-3 text-sm font-bold text-white hover:bg-orange-700">Request a quotation</Link>
+            <a href="https://wa.me/260777777079?text=Hello%20Afrilink%2C%20I%20need%20help%20sourcing%20equipment." target="_blank" rel="noopener noreferrer" className="rounded-xl border border-blue-950 px-6 py-3 text-sm font-bold text-blue-950 hover:bg-white">Talk to us on WhatsApp</a>
+            <Link href="/buying-guide" className="px-3 py-3 text-sm font-bold text-blue-950 underline underline-offset-4">How buying works</Link>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">{["Ice machines", "Water treatment", "Sachet machines", "Packaging materials"].map((item) => <Link key={item} href={`/products?search=${encodeURIComponent(item)}`} className="rounded-full border border-orange-200 bg-white px-3 py-2 text-xs font-semibold hover:border-orange-600">{item}</Link>)}</div>
+        </div>
         <form onSubmit={submitSearch} className="mx-auto mt-5 flex max-w-4xl overflow-hidden rounded-2xl border-2 border-orange-500 bg-white p-1.5 shadow-lg"><span className="hidden items-center px-3 text-xl text-slate-400 sm:flex">⌕</span><input aria-label="Search Afrilink products" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search machines, equipment, products and suppliers" className="min-w-0 flex-1 px-3 py-3 text-sm outline-none sm:text-base" /><button className="rounded-xl bg-orange-500 px-5 font-black text-white hover:bg-orange-600 sm:px-8">Search</button></form>
-        <div className="mx-auto mt-2 flex max-w-4xl items-center gap-5 px-2 text-[11px] text-slate-600"><span>▣ Image search</span><span>Popular: Machinery · Water systems · Packaging</span></div>
+        <div className="mx-auto mt-2 flex max-w-4xl items-center gap-5 px-2 text-[11px] text-slate-600"><Link href="/post-request" className="underline">Can’t find your equipment? Send a request</Link><span>Popular: Machinery · Water systems · Packaging</span></div>
       </div>
     </section>
 
@@ -63,7 +73,7 @@ export default function Home() {
         <aside className="hidden h-[316px] overflow-hidden rounded-lg bg-white lg:block"><h2 className="border-b px-4 py-3 text-sm font-black">☆ Categories for you</h2><div className="h-[270px] overflow-y-auto px-2 py-1">{categories.map((category, index) => <button key={category} onClick={() => setActiveCategory(category)} className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-xs hover:bg-orange-50 hover:text-orange-600"><span className="w-5 text-center text-base">{categoryIcons[index % categoryIcons.length]}</span><span className="min-w-0 flex-1 truncate">{category}</span><span>›</span></button>)}</div></aside>
         <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
           {promoProducts.map((product, index) => <Link href={`/products/${product._id}`} key={product._id} className="rounded-lg bg-white p-3 shadow-sm"><h2 className="truncate text-xs font-black">{index === 0 ? "Browsing highlights" : `Keep looking for ${product.category}`}</h2><div className="relative mt-3 aspect-[4/3] overflow-hidden rounded bg-slate-100">{product.image ? <Image unoptimized fill sizes="(max-width:1024px) 50vw, 20vw" src={product.image} alt={product.name} className="object-cover" /> : <div className="flex h-full items-center justify-center text-4xl text-slate-300">▦</div>}<span className="absolute bottom-1 left-1 rounded bg-white px-2 py-1 text-[10px] font-bold">{product.price || "Request price"}</span></div><p className="mt-2 line-clamp-1 text-xs text-slate-600">{product.name}</p></Link>)}
-          {promoProducts.length < 3 && Array.from({ length: 3 - promoProducts.length }, (_, index) => <div key={index} className="animate-pulse rounded-lg bg-white p-3"><div className="h-4 w-2/3 rounded bg-slate-100" /><div className="mt-3 aspect-[4/3] rounded bg-slate-100" /></div>)}
+          {loading && promoProducts.length < 3 && Array.from({ length: 3 - promoProducts.length }, (_, index) => <div key={index} className="animate-pulse rounded-lg bg-white p-3"><div className="h-4 w-2/3 rounded bg-slate-100" /><div className="mt-3 aspect-[4/3] rounded bg-slate-100" /></div>)}
           <div className="relative col-span-2 overflow-hidden rounded-lg bg-gradient-to-br from-orange-100 via-orange-200 to-orange-500 p-5 lg:col-span-1"><p className="text-lg font-black text-orange-700">Fast-selling products</p><p className="mt-2 max-w-36 text-xs text-orange-950">Discover reviewed products for growing African businesses.</p><Link href="/products" className="absolute bottom-4 left-5 rounded-full bg-orange-600 px-5 py-2 text-xs font-black text-white">View more</Link><div className="absolute -bottom-12 -right-12 h-44 w-44 rounded-full border-[26px] border-orange-300/70" /></div>
         </div>
       </div>
@@ -75,6 +85,6 @@ export default function Home() {
       {!loading && featuredProducts.length > 0 && <div className="mt-6 text-center"><Link href="/products" className="inline-block rounded-full border border-slate-950 bg-white px-7 py-3 text-sm font-black hover:bg-slate-950 hover:text-white">View all products</Link></div>}
     </section>
 
-    <section className="border-y bg-white"><div className="mx-auto grid max-w-[1440px] grid-cols-2 divide-x divide-y lg:grid-cols-4 lg:divide-y-0">{[["✓", "Afrilink reviewed", "Products checked before publication"], ["1", "Official quotation", "One accountable procurement partner"], ["20%", "Transparent markup", "Consistent buyer-facing pricing"], ["A–Z", "Import coordination", "Sourcing through delivery support"]].map(([value, title, detail]) => <div key={title} className="p-5"><p className="text-xl font-black text-orange-500">{value}</p><h3 className="mt-1 text-sm font-black">{title}</h3><p className="mt-1 text-xs text-slate-500">{detail}</p></div>)}</div></section>
+    <section className="border-y bg-white"><div className="mx-auto grid max-w-[1440px] grid-cols-2 divide-x divide-y lg:grid-cols-4 lg:divide-y-0">{[["✓", "Product sourcing", "Tell us your specifications and destination"], ["1", "Official quotation", "Review your written offer before payment"], ["K", "Clear pricing", "Confirm freight, taxes and other inclusions"], ["A–Z", "Import coordination", "Sourcing through delivery support"]].map(([value, title, detail]) => <div key={title} className="p-5"><p className="text-xl font-black text-orange-500">{value}</p><h3 className="mt-1 text-sm font-black">{title}</h3><p className="mt-1 text-xs text-slate-500">{detail}</p></div>)}</div></section>
   </main>;
 }

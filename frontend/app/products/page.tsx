@@ -39,7 +39,8 @@ export default function ProductsPage() {
         const params = new URLSearchParams(window.location.search);
         setSearch(params.get("search") || "");
         setCategory(params.get("category") || "all");
-        const data = await apiFetch("/products");
+        setSort(params.get("sort") || "newest");
+        const data = await apiFetch("/products", { signal: AbortSignal.timeout(20000) });
         setProducts(data.products || []);
       } catch (error) {
         console.error(error);
@@ -100,27 +101,15 @@ export default function ProductsPage() {
     });
   }, [category, origin, products, search, sort]);
 
-  if (loading) {
-    return (
-      <main className="min-h-screen bg-[#f4f4f4] p-4">
-        <div className="mx-auto max-w-[1440px]">
-          <div className="h-8 w-72 animate-pulse rounded bg-gray-200" />
-          <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6" aria-label="Loading products">
-            {Array.from({ length: 12 }, (_, item) => (
-              <div key={item} className="h-72 animate-pulse rounded-lg bg-white shadow-sm" />
-            ))}
-          </div>
-        </div>
-      </main>
-    );
-  }
 
   return (
     <main className="min-h-screen bg-[#f4f4f4] px-2 py-5 sm:px-4 lg:px-5">
       <div className="mx-auto max-w-[1440px]">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs text-slate-500"><Link href="/" className="hover:text-orange-600">Home</Link> / Product marketplace</p><h1 className="mt-1 text-2xl font-black text-slate-950">Products for African businesses</h1><p className="mt-1 text-xs text-slate-500">Afrilink-reviewed products with managed sourcing and official quotations.</p></div><BuyerOnly><Link href="/post-request" className="rounded-full bg-orange-500 px-5 py-2.5 text-xs font-black text-white hover:bg-orange-600">Request for Quotation</Link></BuyerOnly></div>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p className="text-xs text-slate-500"><Link href="/" className="hover:text-orange-600">Home</Link> / Product showroom</p><h1 className="mt-1 text-2xl font-black text-slate-950">Products for African businesses</h1><p className="mt-1 text-xs text-slate-500">Afrilink-reviewed products with managed sourcing and official quotations.</p></div><BuyerOnly><Link href="/post-request" className="rounded-full bg-orange-500 px-5 py-2.5 text-xs font-black text-white hover:bg-orange-600">Request for Quotation</Link></BuyerOnly></div>
 
-      {!error && products.length > 0 && (
+      {loading && <section role="status" className="mb-5 rounded-xl border bg-white p-6"><p className="font-bold text-blue-950">Loading the product catalogue…</p><p className="mt-2 text-sm text-slate-600">You can request a quotation while we load the available products.</p><Link href="/post-request" className="mt-3 inline-block font-bold text-orange-700 underline">Tell us what you need</Link></section>}
+
+      {!loading && !error && products.length > 0 && (
         <div className="mb-4 grid gap-2 rounded-lg border bg-white p-3 shadow-sm md:grid-cols-[1fr_220px_180px_190px]">
           <div>
             <label htmlFor="product-search" className="mb-1 block text-[11px] font-bold text-slate-600">Search products</label>
@@ -155,7 +144,7 @@ export default function ProductsPage() {
         </div>
       )}
 
-      {error ? (
+      {!loading && (error ? (
         <div className="bg-white p-8 rounded-2xl shadow text-center">
           <h2 className="text-2xl font-bold text-blue-900">
             The showroom is temporarily unavailable
@@ -179,9 +168,9 @@ export default function ProductsPage() {
             Request a Quotation
           </Link></BuyerOnly>
         </div>
-      )}
+      ))}
 
-      {!error && products.length > 0 && filteredProducts.length === 0 && (
+      {!loading && !error && products.length > 0 && filteredProducts.length === 0 && (
         <div className="rounded-2xl bg-white p-8 text-center shadow-sm">
           <h2 className="text-2xl font-bold text-blue-900">No matching products</h2>
           <p className="mt-2 text-gray-600">
