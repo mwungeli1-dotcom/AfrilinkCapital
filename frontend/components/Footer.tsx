@@ -1,7 +1,7 @@
 import Link from "next/link";
 import BuyerOnly from "./BuyerOnly";
 
-const columns = [["About Afrilink", ["Why choose Afrilink", "African market focus", "Supplier confidentiality", "Contact our team"]], ["Buyer protection", ["Managed payments", "Official quotations", "Order records", "Import coordination"]], ["Source on Afrilink", ["Verified products", "Request for quotation", "Saved products", "Product categories"]], ["Help Center", ["Buyer help", "Supplier help", "Shipping support", "Report a problem"]], ["Sell on Afrilink", ["Supplier registration", "List a product", "Supplier dashboard", "Application status"]]] as const;
+const columns = [["About Afrilink", ["Why choose Afrilink", "African market focus", "Supplier confidentiality", "Contact our team"]], ["Buying with Afrilink", ["Managed payments", "Official quotations", "Order records", "Import coordination"]], ["Source on Afrilink", ["Verified products", "Request for quotation", "Saved products", "Product categories"]], ["Help Center", ["Buyer help", "Supplier help", "Shipping support", "Report a problem"]], ["Sell on Afrilink", ["Supplier registration", "List a product", "Supplier dashboard", "Application status"]]] as const;
 
 function linkFor(label: string) {
   if (["Verified products", "Product categories"].includes(label)) return "/products";
@@ -10,6 +10,11 @@ function linkFor(label: string) {
   if (["Supplier registration", "Application status"].includes(label)) return "/register?type=supplier";
   if (label === "List a product") return "/admin/products/create";
   if (label === "Supplier dashboard") return "/dashboard";
+  if (["Managed payments", "Official quotations"].includes(label)) return "/buying-guide#payment";
+  if (label === "Order records") return "/buying-guide#records";
+  if (["Import coordination", "Shipping support"].includes(label)) return "/buying-guide#delivery";
+  if (["Buyer help", "Why choose Afrilink", "African market focus", "Supplier confidentiality"].includes(label)) return "/buying-guide";
+  if (label === "Supplier help") return "/become-supplier";
   return "/contact";
 }
 
